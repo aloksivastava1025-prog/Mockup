@@ -69,6 +69,27 @@ simplification relies on.
 Recording restarts the footage from the top, so the take lines up with what
 the export renders.
 
+### Locations and surfaces
+
+A flat grey floor under a soft gradient is invisible — the device reads as
+floating rather than resting on anything. `scene/surfaces.js` generates the
+surfaces procedurally on a canvas (wood, concrete, marble, a studio sweep)
+rather than shipping image files, which would outweigh the whole app. They only
+need to read as a material under a small object, not survive close inspection.
+
+Everything tiles seamlessly: anything drawn near an edge is drawn again wrapped
+to the opposite side, and the wood's grain runs the full width with plank seams
+on an exact division of the tile.
+
+`scene/locations.js` bundles a surface with its backdrop and lighting — Studio,
+Desk, Loft, Marble, Noir, Void. They are kept together on purpose: a wooden
+desk under cold studio light looks wrong, and choosing the three separately is
+how you get there. The individual controls stay available underneath.
+
+Note that every surface has a map, including the near-flat studio sweep. A
+material switched to *no* map keeps whatever map it had, so a texture-less
+surface would silently inherit the previous one.
+
 ### Adapt
 
 On by default, in the Screen panel. The display takes the footage's aspect

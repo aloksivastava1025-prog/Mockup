@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { ColorField, Panel, Segmented, Slider, Toggle } from './controls.jsx'
 import { ASPECTS, dimensionsFor, downloadBlob, exportImage, exportVideo, SIZE_LABELS } from '../export/exportVideo.js'
+import { LOCATIONS, applyLocation } from '../scene/locations.js'
+import { SURFACES } from '../scene/surfaces.js'
 
 export default function RightPanel() {
   const lighting = useStudio((s) => s.lighting)
@@ -10,6 +12,7 @@ export default function RightPanel() {
   const update = useStudio((s) => s.update)
   const exporting = useStudio((s) => s.exporting)
   const hasSource = useStudio((s) => !!s.source)
+  const locationId = useStudio((s) => s.locationId)
 
   const [fps, setFps] = useState(30)
   const [aspect, setAspect] = useState('16:9')
@@ -85,6 +88,37 @@ export default function RightPanel() {
         <Slider label="Glass" value={material.screenReflectivity} min={0} max={0.6} step={0.005} onChange={(v) => update('material', { screenReflectivity: v })} />
       </Panel>
 
+      <Panel title="Location">
+        <div className="field stacked">
+          <div className="seg">
+            {Object.entries(LOCATIONS).slice(0, 3).map(([id, l]) => (
+              <button key={id} className={locationId === id ? 'on' : ''} onClick={() => applyLocation(id, useStudio)}>
+                {l.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field stacked">
+          <div className="seg">
+            {Object.entries(LOCATIONS).slice(3).map(([id, l]) => (
+              <button key={id} className={locationId === id ? 'on' : ''} onClick={() => applyLocation(id, useStudio)}>
+                {l.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="hint">Sets the surface, backdrop and light together. Tune any of them below.</p>
+        <Toggle label="Floor" value={background.groundVisible} onChange={(v) => update('background', { groundVisible: v })} />
+        {background.groundVisible && (
+          <Segmented
+            label="Surface"
+            value={background.surface ?? 'studio'}
+            options={Object.entries(SURFACES).map(([k, v]) => ({ value: k, label: v.label }))}
+            onChange={(v) => update('background', { surface: v })}
+          />
+        )}
+      </Panel>
+
       <Panel title="Background" defaultOpen={false}>
         <Segmented
           value={background.mode}
@@ -104,21 +138,9 @@ export default function RightPanel() {
         {background.mode === 'color' && (
           <ColorField label="Colour" value={background.color} onChange={(v) => update('background', { color: v })} />
         )}
-        <Toggle label="Floor" value={background.groundVisible} onChange={(v) => update('background', { groundVisible: v })} />
         {background.groundVisible && (
-          <Segmented
-            label="Surface"
-            value={background.groundStyle ?? 'matte'}
-            options={[
-              { value: 'matte', label: 'Matte' },
-              { value: 'reflective', label: 'Mirror' },
-            ]}
-            onChange={(v) => update('background', { groundStyle: v })}
-          />
-        )}
-        {background.groundVisible && (background.groundStyle ?? 'matte') === 'matte' && (
           <ColorField
-            label="Floor"
+            label="Floor tint"
             value={background.groundColor ?? '#d4d4d4'}
             onChange={(v) => update('background', { groundColor: v })}
           />

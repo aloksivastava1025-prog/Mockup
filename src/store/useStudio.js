@@ -59,7 +59,7 @@ const defaults = {
     colorBottom: '#cfcfcf',
     color: '#d6d6d6',
     groundVisible: true,
-    groundStyle: 'matte', // 'matte' | 'reflective'
+    surface: 'studio', // see scene/surfaces.js
     groundColor: '#d4d4d4',
   },
 }
@@ -75,6 +75,7 @@ export const DOC_KEYS = [
   'lighting',
   'material',
   'background',
+  'locationId',
   'deviceId',
   'adaptScreen',
   'keyframes',
@@ -103,6 +104,7 @@ export const useStudio = create((set, get) => ({
   ...clone(defaults),
 
   deviceId: 'macbook',
+  locationId: 'studio',
 
   // Reshape the device display to the footage's aspect ratio. With this on the
   // recording fills the screen exactly — no crop and no letterbox bars. Kept

@@ -7,6 +7,7 @@ import { DEVICES } from '../devices/index.js'
 import { sampleAt } from '../anim/interpolate.js'
 import { createScreenSource } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
+import { SURFACES, surfaceTexture } from './surfaces.js'
 
 const DEG = Math.PI / 180
 
@@ -138,7 +139,10 @@ function Ground() {
   const background = useStudio((s) => s.background)
   const lighting = useStudio((s) => s.lighting)
   const { groundVisible } = background
-  const matte = (background.groundStyle ?? 'reflective') === 'matte'
+  const kind = background.surface ?? 'studio'
+  const surface = SURFACES[kind] ?? SURFACES.studio
+  const GROUND = 24
+  const map = useMemo(() => surfaceTexture(kind, GROUND), [kind])
 
   // Contact shadows cost a full extra scene render per frame. While a video
   // plays the device and camera are usually still — only the screen content
@@ -153,10 +157,8 @@ function Ground() {
     <>
       {groundVisible && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.0005, 0]} receiveShadow userData={{ ground: true }}>
-          <planeGeometry args={[24, 24]} />
-          {matte ? (
-            <meshStandardMaterial color={background.groundColor ?? '#d2d2d2'} roughness={0.9} metalness={0} />
-          ) : (
+          <planeGeometry args={[GROUND, GROUND]} />
+          {kind === 'mirror' ? (
             <MeshReflectorMaterial
               resolution={512}
               mixBlur={1}
@@ -166,9 +168,17 @@ function Ground() {
               depthScale={1.1}
               minDepthThreshold={0.4}
               maxDepthThreshold={1.3}
-              color="#0d0f14"
+              color={background.groundColor ?? surface.color}
               metalness={0.5}
               mirror={0.35}
+            />
+          ) : (
+            <meshStandardMaterial
+              key={kind}
+              map={map}
+              color={map ? background.groundColor ?? '#ffffff' : background.groundColor ?? surface.color}
+              roughness={surface.roughness}
+              metalness={surface.metalness}
             />
           )}
         </mesh>
