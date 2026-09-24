@@ -139,6 +139,31 @@ export default function LeftPanel({ onCollapse }) {
           precision={0}
           onChange={(v) => update('device', { lidAngle: v })}
         />
+        <Slider
+          label="Tilt"
+          value={device.rotation[2]}
+          min={-60}
+          max={60}
+          step={0.5}
+          unit="°"
+          precision={0}
+          onChange={(v) => setAxis('device', 'rotation', 2, v)}
+        />
+        <Slider
+          label="Float"
+          value={device.position[1]}
+          min={0}
+          max={0.8}
+          step={0.005}
+          precision={2}
+          onChange={(v) => setAxis('device', 'position', 1, v)}
+        />
+        {device.position[1] > 0.001 && (
+          <p className="hint">
+            Off the surface. The contact shadow spreads and fades with height — turn the Floor off
+            entirely for a shot against nothing but the backdrop.
+          </p>
+        )}
         <Slider label="Scale" value={device.scale} min={0.2} max={4} step={0.01} onChange={(v) => update('device', { scale: v })} />
       </Panel>
 

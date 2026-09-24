@@ -69,6 +69,18 @@ simplification relies on.
 Recording restarts the footage from the top, so the take lines up with what
 the export renders.
 
+### Tilt and Float
+
+Transform carries **Tilt** (roll, the Z of the rotation) and **Float** (height
+off the surface, the Y of the position) as their own sliders — the two moves a
+floating hero shot is made of, rather than leaving them buried in a vector.
+
+Lifting the device makes its shadow answer for it: the contact shadow spreads,
+fades and widens its reach with height. A hard contact patch under something
+hanging in mid-air reads as a mistake, and a shadow that simply vanished would
+read as one too. For a shot against nothing but the backdrop, turn the Floor
+off in Location.
+
 ### Props
 
 A camera that climbs away from a device on an infinite plane has nothing to

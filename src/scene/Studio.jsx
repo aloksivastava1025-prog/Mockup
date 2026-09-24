@@ -156,6 +156,15 @@ function Ground() {
   const pose = useStudio((s) => s.device)
   const poseKey = `${pose.position.join()}|${pose.rotation.join()}|${pose.lidAngle}|${pose.scale}`
 
+  // Lift the device and its shadow has to answer for it: a hard contact patch
+  // under something floating in mid-air reads as a mistake. Spread it, fade it,
+  // and widen the catcher's reach so it does not simply vanish.
+  const lift = Math.max(0, pose.position[1] ?? 0)
+  const shadowOpacity = lighting.shadowOpacity / (1 + lift * 6)
+  const shadowBlur = lighting.shadowBlur * (1 + lift * 8)
+  const shadowScale = 1.4 + lift * 1.6
+  const shadowFar = 0.55 + lift * 1.2
+
   return (
     <>
       {groundVisible && (
@@ -190,10 +199,10 @@ function Ground() {
         <ContactShadows
           key={isPlaying ? 'animating' : poseKey}
           position={[0, 0.001, 0]}
-          opacity={lighting.shadowOpacity}
-          scale={1.4}
-          blur={lighting.shadowBlur}
-          far={0.55}
+          opacity={shadowOpacity}
+          scale={shadowScale}
+          blur={shadowBlur}
+          far={shadowFar}
           resolution={512}
           frames={isPlaying ? Infinity : 1}
         />
