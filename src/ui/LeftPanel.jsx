@@ -46,6 +46,32 @@ export default function LeftPanel() {
         <p className="hint">Coming soon: {COMING_SOON.map((d) => d.label).join(', ')}.</p>
       </Panel>
 
+      <Panel title="Screen" right={<ResetBtn group="screen" />}>
+        <Toggle label="Adapt" value={adaptScreen} onChange={setAdaptScreen} />
+        <p className="hint">
+          {adaptScreen
+            ? 'Display reshaped to your footage — fills it exactly, no crop or bars.'
+            : 'Using the real device aspect. Fit decides how the footage sits inside it.'}
+        </p>
+        {!adaptScreen && (
+        <Segmented
+          label="Fit"
+          value={screen.fit}
+          options={[
+            { value: 'cover', label: 'Cover' },
+            { value: 'contain', label: 'Contain' },
+            { value: 'stretch', label: 'Stretch' },
+          ]}
+          onChange={(v) => update('screen', { fit: v })}
+        />
+        )}
+        <Slider label="Zoom" value={screen.scale} min={0.3} max={3} step={0.01} onChange={(v) => update('screen', { scale: v })} />
+        <Slider label="Offset X" value={screen.offsetX} min={-0.5} max={0.5} step={0.005} onChange={(v) => update('screen', { offsetX: v })} />
+        <Slider label="Offset Y" value={screen.offsetY} min={-0.5} max={0.5} step={0.005} onChange={(v) => update('screen', { offsetY: v })} />
+        <Slider label="Brightness" value={screen.brightness} min={0.2} max={2} step={0.01} onChange={(v) => update('screen', { brightness: v })} />
+        <Slider label="Glow" value={screen.glow} min={0} max={2} step={0.01} onChange={(v) => update('screen', { glow: v })} />
+      </Panel>
+
       <Panel title="Transform" right={<ResetBtn group="device" />}>
         <Vec3 label="Position" value={device.position} step={0.01} onChange={(i, v) => setAxis('device', 'position', i, v)} />
         <Vec3 label="Rotation" value={device.rotation} step={1} onChange={(i, v) => setAxis('device', 'rotation', i, v)} />
@@ -81,31 +107,6 @@ export default function LeftPanel() {
         </p>
       </Panel>
 
-      <Panel title="Screen" right={<ResetBtn group="screen" />} defaultOpen={false}>
-        <Toggle label="Adapt" value={adaptScreen} onChange={setAdaptScreen} />
-        <p className="hint">
-          {adaptScreen
-            ? 'Display reshaped to your footage — fills it exactly, no crop or bars.'
-            : 'Using the real device aspect. Fit decides how the footage sits inside it.'}
-        </p>
-        {!adaptScreen && (
-        <Segmented
-          label="Fit"
-          value={screen.fit}
-          options={[
-            { value: 'cover', label: 'Cover' },
-            { value: 'contain', label: 'Contain' },
-            { value: 'stretch', label: 'Stretch' },
-          ]}
-          onChange={(v) => update('screen', { fit: v })}
-        />
-        )}
-        <Slider label="Zoom" value={screen.scale} min={0.3} max={3} step={0.01} onChange={(v) => update('screen', { scale: v })} />
-        <Slider label="Offset X" value={screen.offsetX} min={-0.5} max={0.5} step={0.005} onChange={(v) => update('screen', { offsetX: v })} />
-        <Slider label="Offset Y" value={screen.offsetY} min={-0.5} max={0.5} step={0.005} onChange={(v) => update('screen', { offsetY: v })} />
-        <Slider label="Brightness" value={screen.brightness} min={0.2} max={2} step={0.01} onChange={(v) => update('screen', { brightness: v })} />
-        <Slider label="Glow" value={screen.glow} min={0} max={2} step={0.01} onChange={(v) => update('screen', { glow: v })} />
-      </Panel>
     </aside>
   )
 }
