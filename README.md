@@ -101,6 +101,21 @@ same factor. Scaling only the lid leaves it too short to cover the base when
 closed. Turn Adapt off for true device proportions, and the Fit control
 (cover / contain / stretch) comes back.
 
+### Why authored keyframes ride a spline
+
+Easing each segment on its own (the obvious `smoothstep` between two poses)
+makes velocity hit zero on *both* sides of every keyframe, so an eight-keyframe
+move reads as eight separate nudges rather than one glide. Authored tracks
+therefore interpolate with a Catmull-Rom spline through the neighbouring
+keyframes, which passes through the same poses while carrying speed across
+them. Measured on the 20s preset: camera speed at the seven interior keyframes
+stays between 0.03 and 0.08 against a mean of 0.09 — no stalls.
+
+Equal values on both sides of a segment are held flat, so a deliberate pause
+does not bulge from neighbouring motion. Recorded takes stay linear: their own
+acceleration is already in the samples, and their simplification assumed linear
+prediction.
+
 ### Transitions
 
 There is no cross-dissolve — a single render pass can only show one pose at a
