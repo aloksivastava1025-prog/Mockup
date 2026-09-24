@@ -86,12 +86,17 @@ export function createScreenSource(source, screenAspect, maxAnisotropy = 1) {
     const a = sw / sh
     const canvasAspect = W / H
 
+    // A source far taller than the display is a page to scroll, not a frame to
+    // letterbox — `contain` would shrink it to a narrow central strip.
+    const scrollsVertically = a < canvasAspect * 0.85
+    const fit = scrollsVertically && screen.fit === 'contain' ? 'cover' : screen.fit
+
     let dw
     let dh
-    if (screen.fit === 'stretch') {
+    if (fit === 'stretch') {
       dw = W
       dh = H
-    } else if (screen.fit === 'cover') {
+    } else if (fit === 'cover') {
       if (a > canvasAspect) {
         dh = H
         dw = H * a
