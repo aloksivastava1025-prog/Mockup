@@ -26,6 +26,7 @@ export default function LeftPanel({ onCollapse }) {
   const screen = useStudio((s) => s.screen)
   const update = useStudio((s) => s.update)
   const setAxis = useStudio((s) => s.setAxis)
+  const setFloat = useStudio((s) => s.setFloat)
   const orbitEnabled = useStudio((s) => s.orbitEnabled)
   const setOrbitEnabled = useStudio((s) => s.setOrbitEnabled)
   const adaptScreen = useStudio((s) => s.adaptScreen)
@@ -127,7 +128,12 @@ export default function LeftPanel({ onCollapse }) {
       </Panel>
 
       <Panel title="Transform" right={<ResetBtn group="device" />}>
-        <Vec3 label="Position" value={device.position} step={0.01} onChange={(i, v) => setAxis('device', 'position', i, v)} />
+        <Vec3
+          label="Position"
+          value={device.position}
+          step={0.01}
+          onChange={(i, v) => (i === 1 ? setFloat(v) : setAxis('device', 'position', i, v))}
+        />
         <Vec3 label="Rotation" value={device.rotation} step={1} onChange={(i, v) => setAxis('device', 'rotation', i, v)} />
         <Slider
           label="Lid"
@@ -156,12 +162,12 @@ export default function LeftPanel({ onCollapse }) {
           max={0.8}
           step={0.005}
           precision={2}
-          onChange={(v) => setAxis('device', 'position', 1, v)}
+          onChange={setFloat}
         />
         {device.position[1] > 0.001 && (
           <p className="hint">
-            Off the surface. The contact shadow spreads and fades with height — turn the Floor off
-            entirely for a shot against nothing but the backdrop.
+            Off the surface, with the camera rising to keep it framed. The contact shadow spreads
+            and fades with height — turn the Floor off for a shot against nothing but the backdrop.
           </p>
         )}
         <Slider label="Scale" value={device.scale} min={0.2} max={4} step={0.01} onChange={(v) => update('device', { scale: v })} />

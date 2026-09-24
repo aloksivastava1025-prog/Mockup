@@ -55,7 +55,7 @@ const defaults = {
     keyBacklight: 0.5,
   },
   background: {
-    mode: 'gradient', // 'gradient' | 'color' | 'transparent'
+    mode: 'gradient', // 'gradient' | 'color' | 'image' | 'transparent'
     colorTop: '#dedede',
     colorBottom: '#cfcfcf',
     color: '#d6d6d6',
@@ -121,6 +121,12 @@ export const useStudio = create((set, get) => ({
   autoplay: true,
   setAutoplay: (autoplay) => set({ autoplay }),
 
+  // The user's own backdrop image. Like the screen source, the element itself
+  // is far too large for a project file, so only the mode is saved and the
+  // image is re-attached on open.
+  backdrop: null, // { el, url, name }
+  setBackdrop: (backdrop) => set({ backdrop }),
+
   // ---- screen source: a recording or a screenshot ----
   source: null, // { kind, el, url, name, duration, width, height }
   setSource: (source) => set({ source }),
@@ -144,6 +150,26 @@ export const useStudio = create((set, get) => ({
       return {
         ...historyPatch(s, `${group}.${key}.${index}`),
         [group]: { ...s[group], [key]: next },
+        previewLive: true,
+      }
+    }),
+  /**
+   * Height off the surface. The camera rises with the device, otherwise
+   * floating it just walks the subject out of the top of the frame. Both moves
+   * land in one update so a drag stays a single undo step.
+   */
+  setFloat: (y) =>
+    set((s) => {
+      const delta = y - s.device.position[1]
+      if (!delta) return {}
+      return {
+        ...historyPatch(s, 'device.float'),
+        device: { ...s.device, position: [s.device.position[0], y, s.device.position[2]] },
+        camera: {
+          ...s.camera,
+          position: [s.camera.position[0], s.camera.position[1] + delta, s.camera.position[2]],
+          target: [s.camera.target[0], s.camera.target[1] + delta, s.camera.target[2]],
+        },
         previewLive: true,
       }
     }),

@@ -19,11 +19,26 @@ const ADAPT_MAX = 1.7
 function useGradientBackground() {
   const { scene } = useThree()
   const background = useStudio((s) => s.background)
+  const backdrop = useStudio((s) => s.backdrop)
 
   useEffect(() => {
     if (background.mode === 'transparent') {
       scene.background = null
       return
+    }
+    if (background.mode === 'image') {
+      if (!backdrop) {
+        scene.background = new THREE.Color('#d6d6d6')
+        return
+      }
+      const tex = new THREE.Texture(backdrop.el)
+      tex.colorSpace = THREE.SRGBColorSpace
+      // Marked so the frame loop knows to keep its aspect; the gradient below
+      // is a 4x256 strip that is *meant* to stretch.
+      tex.userData.cover = true
+      tex.needsUpdate = true
+      scene.background = tex
+      return () => tex.dispose()
     }
     if (background.mode === 'color') {
       scene.background = new THREE.Color(background.color)
@@ -42,7 +57,7 @@ function useGradientBackground() {
     tex.colorSpace = THREE.SRGBColorSpace
     scene.background = tex
     return () => tex.dispose()
-  }, [scene, background.mode, background.color, background.colorTop, background.colorBottom])
+  }, [scene, backdrop, background.mode, background.color, background.colorTop, background.colorBottom])
 }
 
 function EnvRig({ preset, intensity }) {
@@ -328,6 +343,23 @@ function Rig() {
         if (controlsRef.current) controlsRef.current.target.copy(target)
       }
 
+      // A backdrop photo must keep its aspect whatever shape the output is —
+      // stretching someone's own image to fit 9:16 is never what they meant.
+      const bg = scene.background
+      if (bg?.isTexture && bg.userData?.cover) {
+        const iw = bg.image?.naturalWidth || bg.image?.width || 1
+        const ih = bg.image?.naturalHeight || bg.image?.height || 1
+        const frame = gl.domElement.width / gl.domElement.height
+        const image = iw / ih
+        if (image > frame) {
+          bg.repeat.set(frame / image, 1)
+          bg.offset.set((1 - frame / image) / 2, 0)
+        } else {
+          bg.repeat.set(1, image / frame)
+          bg.offset.set(0, (1 - image / frame) / 2)
+        }
+      }
+
       // Transition overlay: sit just in front of the near plane, sized to the
       // current frustum so it always fills the frame.
       const fadeMesh = fadeMeshRef.current
@@ -351,7 +383,7 @@ function Rig() {
       }
       return eff
     },
-    [camera, target, screenSource],
+    [camera, target, screenSource, scene, gl],
   )
 
   useEffect(() => {
@@ -371,23 +403,40 @@ function Rig() {
     }
   }, [gl, scene, camera, applyAt, screenSource])
 
+  // Numeric camera edits have to reach the camera even while orbit is on.
+  // Orbit owns the camera between drags, so anything typed into the panel (or
+  // written by Float tracking the device) was silently discarded. Apply store
+  // changes whenever they did not come from a drag; syncCameraToStore ignores
+  // the resulting change event, so there is no loop.
+  useEffect(() => {
+    let prev = useStudio.getState().camera
+    return useStudio.subscribe((s) => {
+      const c = s.camera
+      if (c === prev) return
+      prev = c
+      if (draggingRef.current || s.isPlaying || s.exporting) return
+      if (s.keyframes.length >= 2 && !s.previewLive) return
+      camera.position.set(...c.position)
+      if (camera.fov !== c.fov) {
+        camera.fov = c.fov
+        camera.updateProjectionMatrix()
+      }
+      const ctrl = controlsRef.current
+      if (ctrl) {
+        ctrl.target.set(...c.target)
+        ctrl.update()
+      } else {
+        camera.lookAt(...c.target)
+      }
+      invalidate()
+    })
+  }, [camera, invalidate])
+
   const exposure = useStudio((s) => s.lighting.exposure)
   useEffect(() => {
     gl.toneMappingExposure = exposure ?? 1
     invalidate()
   }, [gl, exposure, invalidate])
-
-  // Keep fov in sync while the user is driving the camera by hand.
-  useEffect(() => {
-    const unsub = useStudio.subscribe((s) => {
-      if (camera.fov !== s.camera.fov) {
-        camera.fov = s.camera.fov
-        camera.updateProjectionMatrix()
-        invalidate()
-      }
-    })
-    return unsub
-  }, [camera, invalidate])
 
   // Snapshot of what is on screen right now. The camera is read from the live
   // object rather than the store so a mouse orbit is captured smoothly, not

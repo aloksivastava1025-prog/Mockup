@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { ColorField, Panel, Segmented, Slider, Toggle } from './controls.jsx'
 import { ASPECTS, dimensionsFor, downloadBlob, exportImage, exportVideo, SIZE_LABELS } from '../export/exportVideo.js'
@@ -13,6 +13,23 @@ export default function RightPanel({ onCollapse }) {
   const exporting = useStudio((s) => s.exporting)
   const hasSource = useStudio((s) => !!s.source)
   const locationId = useStudio((s) => s.locationId)
+  const backdrop = useStudio((s) => s.backdrop)
+  const setBackdrop = useStudio((s) => s.setBackdrop)
+  const backdropRef = useRef(null)
+
+  const loadBackdrop = (file) => {
+    if (!file) return
+    const prev = useStudio.getState().backdrop
+    if (prev?.url) URL.revokeObjectURL(prev.url)
+    const url = URL.createObjectURL(file)
+    const el = new Image()
+    el.onload = () => {
+      setBackdrop({ el, url, name: file.name })
+      useStudio.getState().update('background', { mode: 'image' })
+    }
+    el.onerror = () => setError(`Could not read "${file.name}".`)
+    el.src = url
+  }
 
   const [fps, setFps] = useState(30)
   const [aspect, setAspect] = useState('16:9')
@@ -132,10 +149,30 @@ export default function RightPanel({ onCollapse }) {
           options={[
             { value: 'gradient', label: 'Gradient' },
             { value: 'color', label: 'Solid' },
+            { value: 'image', label: 'Image' },
             { value: 'transparent', label: 'None' },
           ]}
           onChange={(v) => update('background', { mode: v })}
         />
+        {background.mode === 'image' && (
+          <>
+            <input
+              ref={backdropRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => loadBackdrop(e.target.files?.[0])}
+            />
+            <button className="btn wide" onClick={() => backdropRef.current?.click()}>
+              {backdrop ? 'Replace backdrop' : 'Choose backdrop image'}
+            </button>
+            <p className="hint">
+              {backdrop
+                ? `${backdrop.name} — kept at its own aspect whatever you export to. Place the device over it with Position, Tilt and Float; turn the Floor off so it sits on your image rather than on a surface.`
+                : 'Your own image behind the device.'}
+            </p>
+          </>
+        )}
         {background.mode === 'gradient' && (
           <>
             <ColorField label="Top" value={background.colorTop} onChange={(v) => update('background', { colorTop: v })} />

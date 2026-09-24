@@ -72,7 +72,10 @@ the export renders.
 ### Tilt and Float
 
 Transform carries **Tilt** (roll, the Z of the rotation) and **Float** (height
-off the surface, the Y of the position) as their own sliders — the two moves a
+off the surface, the Y of the position) as their own sliders. Float takes the
+camera up with the device — lifting it otherwise just walks the subject out of
+the top of the frame — and both moves land in one store update so a drag stays
+a single undo step — the two moves a
 floating hero shot is made of, rather than leaving them buried in a vector.
 
 Lifting the device makes its shadow answer for it: the contact shadow spreads,
@@ -80,6 +83,17 @@ fades and widens its reach with height. A hard contact patch under something
 hanging in mid-air reads as a mistake, and a shadow that simply vanished would
 read as one too. For a shot against nothing but the backdrop, turn the Floor
 off in Location.
+
+### Your own backdrop
+
+Background > Image takes any picture and puts it behind the device. It is
+cover-fitted against the output shape, so exporting the same scene to 9:16
+crops the photo rather than squashing it. The image lives outside the saved
+project for the same reason the footage does — too large for a JSON file — so
+a reopened project asks for it again.
+
+Place the device over it with Position, Tilt and Float, and turn the Floor off
+so it sits on your image rather than on a surface.
 
 ### Props
 
