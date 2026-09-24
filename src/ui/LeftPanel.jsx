@@ -32,27 +32,23 @@ export default function LeftPanel() {
   return (
     <aside className="sidebar left">
       <Panel title="Device">
-        <div className="seg">
-          {DEVICE_LIST.map((d) => (
-            <button key={d.id} className={deviceId === d.id ? 'on' : ''} onClick={() => setDevice(d.id)}>
-              {d.label}
-            </button>
-          ))}
+        <div className="field stacked">
+          <div className="seg">
+            {DEVICE_LIST.map((d) => (
+              <button key={d.id} className={deviceId === d.id ? 'on' : ''} onClick={() => setDevice(d.id)}>
+                {d.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="row" style={{ flexWrap: 'wrap' }}>
-          {COMING_SOON.map((d) => (
-            <span className="badge" key={d.id}>
-              {d.label} · soon
-            </span>
-          ))}
-        </div>
+        <p className="hint">Coming soon: {COMING_SOON.map((d) => d.label).join(', ')}.</p>
       </Panel>
 
       <Panel title="Transform" right={<ResetBtn group="device" />}>
         <Vec3 label="Position" value={device.position} step={0.01} onChange={(i, v) => setAxis('device', 'position', i, v)} />
-        <Vec3 label="Rotation (°)" value={device.rotation} step={1} onChange={(i, v) => setAxis('device', 'rotation', i, v)} />
+        <Vec3 label="Rotation" value={device.rotation} step={1} onChange={(i, v) => setAxis('device', 'rotation', i, v)} />
         <Slider
-          label="Lid angle"
+          label="Lid"
           value={device.lidAngle}
           min={0}
           max={130}
@@ -65,11 +61,11 @@ export default function LeftPanel() {
       </Panel>
 
       <Panel title="Camera" right={<ResetBtn group="camera" />}>
-        <Toggle label="Orbit with mouse" value={orbitEnabled} onChange={setOrbitEnabled} />
+        <Toggle label="Orbit" value={orbitEnabled} onChange={setOrbitEnabled} />
         <Vec3 label="Position" value={camera.position} step={0.05} onChange={(i, v) => setAxis('camera', 'position', i, v)} />
         <Vec3 label="Look at" value={camera.target} step={0.05} onChange={(i, v) => setAxis('camera', 'target', i, v)} />
         <Slider
-          label="Focal length (FOV)"
+          label="Focal"
           value={camera.fov}
           min={10}
           max={90}
@@ -98,7 +94,7 @@ export default function LeftPanel() {
         <Slider label="Offset X" value={screen.offsetX} min={-0.5} max={0.5} step={0.005} onChange={(v) => update('screen', { offsetX: v })} />
         <Slider label="Offset Y" value={screen.offsetY} min={-0.5} max={0.5} step={0.005} onChange={(v) => update('screen', { offsetY: v })} />
         <Slider label="Brightness" value={screen.brightness} min={0.2} max={2} step={0.01} onChange={(v) => update('screen', { brightness: v })} />
-        <Slider label="Screen glow" value={screen.glow} min={0} max={2} step={0.01} onChange={(v) => update('screen', { glow: v })} />
+        <Slider label="Glow" value={screen.glow} min={0} max={2} step={0.01} onChange={(v) => update('screen', { glow: v })} />
       </Panel>
     </aside>
   )

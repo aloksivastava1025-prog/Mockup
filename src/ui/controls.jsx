@@ -5,56 +5,68 @@ export function Panel({ title, children, defaultOpen = true, right }) {
   return (
     <section className="panel">
       <header onClick={() => setOpen((o) => !o)}>
-        {title}
-        {right}
         <span className={`chev ${open ? 'open' : ''}`}>▶</span>
+        {title}
+        {right && (
+          <span className="head-actions" onClick={(e) => e.stopPropagation()}>
+            {right}
+          </span>
+        )}
       </header>
       {open && <div className="body">{children}</div>}
     </section>
   )
 }
 
+/** label · slider · right-aligned value readout, all on one row */
 export function Slider({ label, value, min, max, step = 0.01, unit = '', onChange, precision = 2 }) {
   const pct = ((value - min) / (max - min)) * 100
   return (
     <div className="field">
-      <label>
-        {label}
-        <span className="val">
+      <label>{label}</label>
+      <div className="control">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          style={{ '--pct': `${pct}%` }}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+        />
+        <span className="readout">
           {Number(value).toFixed(precision)}
           {unit}
         </span>
-      </label>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        style={{ '--pct': `${pct}%` }}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-      />
+      </div>
     </div>
   )
 }
 
+/** numeric field carrying a leading glyph, e.g. `X 0` */
+function NumberField({ glyph, value, step, onChange }) {
+  return (
+    <div className="num">
+      {glyph && <span className="glyph">{glyph}</span>}
+      <input type="number" step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value) || 0)} />
+    </div>
+  )
+}
+
+/**
+ * One axis per row with the group label only on the first, matching the
+ * reference inspector (`Position / X 0 / Y 12`). Three side-by-side fields
+ * clip badly once the panel narrows.
+ */
 export function Vec3({ label, value, step = 0.01, onChange }) {
   return (
-    <div className="field">
-      <label>{label}</label>
-      <div className="vec">
-        {['X', 'Y', 'Z'].map((axis, i) => (
-          <div className="axis" key={axis}>
-            <input
-              type="number"
-              step={step}
-              value={value[i]}
-              onChange={(e) => onChange(i, parseFloat(e.target.value) || 0)}
-            />
-            <span>{axis}</span>
-          </div>
-        ))}
-      </div>
+    <div className="vec-rows">
+      {['X', 'Y', 'Z'].map((axis, i) => (
+        <div className="field" key={axis}>
+          <label>{i === 0 ? label : ''}</label>
+          <NumberField glyph={axis} step={step} value={value[i]} onChange={(v) => onChange(i, v)} />
+        </div>
+      ))}
     </div>
   )
 }
@@ -62,18 +74,23 @@ export function Vec3({ label, value, step = 0.01, onChange }) {
 export function ColorField({ label, value, onChange }) {
   return (
     <div className="field">
-      <label>
-        {label}
-        <span className="val">{value}</span>
-      </label>
-      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
+      <label>{label}</label>
+      <div className="color-row">
+        <span className="swatch" style={{ background: value }}>
+          <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
+        </span>
+        <span className="hex">{value.replace('#', '')}</span>
+      </div>
     </div>
   )
 }
 
 export function Segmented({ label, value, options, onChange }) {
+  // Three or more choices cannot share a row with the label without the
+  // option text clipping, so those drop the control onto its own line.
+  const stacked = !label || options.length > 2
   return (
-    <div className="field">
+    <div className={`field ${stacked ? 'stacked' : ''}`}>
       {label && <label>{label}</label>}
       <div className="seg">
         {options.map((o) => (
@@ -89,12 +106,15 @@ export function Segmented({ label, value, options, onChange }) {
 export function Toggle({ label, value, onChange }) {
   return (
     <div className="field">
-      <label style={{ cursor: 'pointer' }} onClick={() => onChange(!value)}>
-        {label}
-        <span className="val" style={{ color: value ? 'var(--accent)' : 'var(--muted)' }}>
-          {value ? 'On' : 'Off'}
-        </span>
-      </label>
+      <label>{label}</label>
+      <div className="seg">
+        <button className={value ? 'on' : ''} onClick={() => onChange(true)}>
+          On
+        </button>
+        <button className={!value ? 'on' : ''} onClick={() => onChange(false)}>
+          Off
+        </button>
+      </div>
     </div>
   )
 }

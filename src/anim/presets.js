@@ -40,7 +40,8 @@ const shot = (time, o, fade = 0) => {
       scale: o.zoom ?? 1,
       offsetX: o.ox ?? 0,
       offsetY: o.oy ?? 0,
-      fit: 'cover',
+      fit: o.fit ?? 'contain',
+      letterbox: '#000000',
       brightness: o.b ?? 1.05,
       glow: o.g ?? 0.38,
     },
@@ -50,7 +51,7 @@ const shot = (time, o, fade = 0) => {
 
 const SHOT_DEFAULTS = {
   ry: 0, lid: 102, az: 0, el: 16, d: 0.8, fov: 30, ty: 0.115,
-  zoom: 1, ox: 0, oy: 0, b: 1.05, g: 0.38,
+  zoom: 1, ox: 0, oy: 0, b: 1.05, g: 0.38, fit: 'contain',
 }
 const norm = (o) => ({ ...SHOT_DEFAULTS, ...o })
 

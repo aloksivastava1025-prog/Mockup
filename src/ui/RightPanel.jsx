@@ -32,14 +32,14 @@ export default function RightPanel() {
   return (
     <aside className="sidebar right">
       <Panel title="Lighting">
-        <Slider label="Key intensity" value={lighting.keyIntensity} min={0} max={8} step={0.05} onChange={(v) => update('lighting', { keyIntensity: v })} />
-        <Slider label="Key direction" value={lighting.keyAzimuth} min={-180} max={180} step={1} unit="°" precision={0} onChange={(v) => update('lighting', { keyAzimuth: v })} />
-        <Slider label="Key height" value={lighting.keyElevation} min={5} max={88} step={1} unit="°" precision={0} onChange={(v) => update('lighting', { keyElevation: v })} />
+        <Slider label="Key" value={lighting.keyIntensity} min={0} max={8} step={0.05} onChange={(v) => update('lighting', { keyIntensity: v })} />
+        <Slider label="Direction" value={lighting.keyAzimuth} min={-180} max={180} step={1} unit="°" precision={0} onChange={(v) => update('lighting', { keyAzimuth: v })} />
+        <Slider label="Height" value={lighting.keyElevation} min={5} max={88} step={1} unit="°" precision={0} onChange={(v) => update('lighting', { keyElevation: v })} />
         <Slider label="Fill" value={lighting.fillIntensity} min={0} max={4} step={0.05} onChange={(v) => update('lighting', { fillIntensity: v })} />
         <Slider label="Rim" value={lighting.rimIntensity} min={0} max={6} step={0.05} onChange={(v) => update('lighting', { rimIntensity: v })} />
         <Slider label="Ambient" value={lighting.ambient} min={0} max={2} step={0.01} onChange={(v) => update('lighting', { ambient: v })} />
         <Segmented
-          label="Environment"
+          label="Env"
           value={lighting.envPreset}
           options={[
             { value: 'studio', label: 'Studio' },
@@ -49,12 +49,12 @@ export default function RightPanel() {
           ]}
           onChange={(v) => update('lighting', { envPreset: v })}
         />
-        <Slider label="Reflection strength" value={lighting.envIntensity} min={0} max={3} step={0.05} onChange={(v) => update('lighting', { envIntensity: v })} />
+        <Slider label="Reflection" value={lighting.envIntensity} min={0} max={3} step={0.05} onChange={(v) => update('lighting', { envIntensity: v })} />
         <Toggle label="Shadows" value={lighting.shadows} onChange={(v) => update('lighting', { shadows: v })} />
         {lighting.shadows && (
           <>
-            <Slider label="Shadow opacity" value={lighting.shadowOpacity} min={0} max={1} step={0.01} onChange={(v) => update('lighting', { shadowOpacity: v })} />
-            <Slider label="Shadow softness" value={lighting.shadowBlur} min={0} max={8} step={0.1} onChange={(v) => update('lighting', { shadowBlur: v })} />
+            <Slider label="Opacity" value={lighting.shadowOpacity} min={0} max={1} step={0.01} onChange={(v) => update('lighting', { shadowOpacity: v })} />
+            <Slider label="Softness" value={lighting.shadowBlur} min={0} max={8} step={0.1} onChange={(v) => update('lighting', { shadowBlur: v })} />
           </>
         )}
       </Panel>
@@ -64,7 +64,7 @@ export default function RightPanel() {
         <Slider label="Roughness" value={material.bodyRoughness} min={0} max={1} step={0.01} onChange={(v) => update('material', { bodyRoughness: v })} />
         <Slider label="Metalness" value={material.bodyMetalness} min={0} max={1} step={0.01} onChange={(v) => update('material', { bodyMetalness: v })} />
         <ColorField label="Bezel" value={material.bezelColor} onChange={(v) => update('material', { bezelColor: v })} />
-        <Slider label="Glass reflection" value={material.screenReflectivity} min={0} max={0.6} step={0.005} onChange={(v) => update('material', { screenReflectivity: v })} />
+        <Slider label="Glass" value={material.screenReflectivity} min={0} max={0.6} step={0.005} onChange={(v) => update('material', { screenReflectivity: v })} />
       </Panel>
 
       <Panel title="Background" defaultOpen={false}>
@@ -86,18 +86,36 @@ export default function RightPanel() {
         {background.mode === 'color' && (
           <ColorField label="Colour" value={background.color} onChange={(v) => update('background', { color: v })} />
         )}
-        <Toggle label="Reflective floor" value={background.groundVisible} onChange={(v) => update('background', { groundVisible: v })} />
+        <Toggle label="Floor" value={background.groundVisible} onChange={(v) => update('background', { groundVisible: v })} />
+        {background.groundVisible && (
+          <Segmented
+            label="Surface"
+            value={background.groundStyle ?? 'matte'}
+            options={[
+              { value: 'matte', label: 'Matte' },
+              { value: 'reflective', label: 'Mirror' },
+            ]}
+            onChange={(v) => update('background', { groundStyle: v })}
+          />
+        )}
+        {background.groundVisible && (background.groundStyle ?? 'matte') === 'matte' && (
+          <ColorField
+            label="Floor"
+            value={background.groundColor ?? '#d4d4d4'}
+            onChange={(v) => update('background', { groundColor: v })}
+          />
+        )}
       </Panel>
 
       <Panel title="Export">
         <Segmented
-          label="Resolution"
+          label="Size"
           value={resolution}
           options={Object.keys(RESOLUTIONS).map((k) => ({ value: k, label: k }))}
           onChange={setResolution}
         />
         <Segmented
-          label="Frame rate"
+          label="Rate"
           value={fps}
           options={[
             { value: 24, label: '24' },
@@ -116,7 +134,7 @@ export default function RightPanel() {
           ]}
           onChange={setBitrateMbps}
         />
-        <button className="btn primary" disabled={!!exporting || !hasVideo} onClick={runExport}>
+        <button className="btn primary wide" disabled={!!exporting || !hasVideo} onClick={runExport}>
           {exporting ? `${exporting.phase}… ${Math.round(exporting.progress * 100)}%` : 'Export video'}
         </button>
         {exporting && (

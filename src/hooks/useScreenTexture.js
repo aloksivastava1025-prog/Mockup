@@ -1,44 +1,88 @@
-import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 
-export function createScreenTexture(videoEl) {
-  const t = new THREE.VideoTexture(videoEl)
-  t.colorSpace = THREE.SRGBColorSpace
-  t.minFilter = THREE.LinearFilter
-  t.magFilter = THREE.LinearFilter
-  t.wrapS = THREE.ClampToEdgeWrapping
-  t.wrapT = THREE.ClampToEdgeWrapping
-  return t
-}
+/**
+ * The display texture is composited on a 2D canvas rather than fitted with UV
+ * offsets on the video texture directly.
+ *
+ * UV fitting can only ever crop (`cover`); asking it to letterbox pushes the
+ * coordinates outside [0,1], where clamping smears the outermost row of pixels
+ * across the bars. Compositing lets `contain` draw real letterbox bars, so a
+ * recording that is wider than the device screen is shown whole.
+ */
+export function createScreenCompositor(videoEl, screenAspect) {
+  const canvas = document.createElement('canvas')
+  const vw = videoEl.videoWidth || 1920
+  const width = Math.round(Math.min(2560, Math.max(1280, vw)))
+  canvas.width = width
+  canvas.height = Math.round(width / screenAspect)
 
-/** Applies fit / scale / offset to a video texture's UV transform. */
-export function applyScreenUV(texture, videoEl, screenAspect, screen) {
-  if (!texture || !videoEl) return
-  const vw = videoEl.videoWidth || 16
-  const vh = videoEl.videoHeight || 9
-  const videoAspect = vw / vh
+  const ctx = canvas.getContext('2d', { alpha: false })
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  texture.generateMipmaps = false
 
-  let repeatX = 1
-  let repeatY = 1
-  if (screen.fit === 'cover') {
-    if (videoAspect > screenAspect) repeatX = screenAspect / videoAspect
-    else repeatY = videoAspect / screenAspect
-  } else if (screen.fit === 'contain') {
-    if (videoAspect > screenAspect) repeatY = videoAspect / screenAspect
-    else repeatX = screenAspect / videoAspect
+  let last = null
+
+  const draw = (screen) => {
+    last = screen
+    const W = canvas.width
+    const H = canvas.height
+
+    ctx.fillStyle = screen.letterbox ?? '#000000'
+    ctx.fillRect(0, 0, W, H)
+
+    const sw = videoEl.videoWidth
+    const sh = videoEl.videoHeight
+    if (!sw || !sh || videoEl.readyState < 2) return
+
+    const videoAspect = sw / sh
+    const canvasAspect = W / H
+
+    let dw
+    let dh
+    if (screen.fit === 'stretch') {
+      dw = W
+      dh = H
+    } else if (screen.fit === 'cover') {
+      if (videoAspect > canvasAspect) {
+        dh = H
+        dw = H * videoAspect
+      } else {
+        dw = W
+        dh = W / videoAspect
+      }
+    } else {
+      // contain — the whole frame is visible, bars fill the remainder
+      if (videoAspect > canvasAspect) {
+        dw = W
+        dh = W / videoAspect
+      } else {
+        dh = H
+        dw = H * videoAspect
+      }
+    }
+
+    const s = Math.max(0.05, screen.scale ?? 1)
+    dw *= s
+    dh *= s
+
+    const dx = (W - dw) / 2 + (screen.offsetX ?? 0) * W
+    const dy = (H - dh) / 2 - (screen.offsetY ?? 0) * H
+
+    try {
+      ctx.drawImage(videoEl, dx, dy, dw, dh)
+    } catch {
+      // a frame can be momentarily undecodable mid-seek; the next draw recovers
+    }
+    texture.needsUpdate = true
   }
 
-  const s = Math.max(0.05, screen.scale)
-  repeatX /= s
-  repeatY /= s
-
-  texture.repeat.set(repeatX, repeatY)
-  texture.offset.set((1 - repeatX) / 2 - screen.offsetX, (1 - repeatY) / 2 + screen.offsetY)
-}
-
-/** React-side convenience: owns the texture lifecycle for a video element. */
-export function useScreenTexture(videoEl) {
-  const texture = useMemo(() => (videoEl ? createScreenTexture(videoEl) : null), [videoEl])
-  useEffect(() => () => texture?.dispose(), [texture])
-  return texture
+  return {
+    texture,
+    draw,
+    redraw: () => last && draw(last),
+    dispose: () => texture.dispose(),
+  }
 }

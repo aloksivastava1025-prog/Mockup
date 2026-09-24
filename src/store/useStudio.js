@@ -19,7 +19,8 @@ const defaults = {
     scale: 1,
     offsetX: 0,
     offsetY: 0,
-    fit: 'cover',
+    fit: 'contain', // show the whole recording; bars fill any aspect mismatch
+    letterbox: '#000000',
     brightness: 1.05,
     glow: 0.25,
   },

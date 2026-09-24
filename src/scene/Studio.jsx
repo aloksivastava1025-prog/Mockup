@@ -5,7 +5,7 @@ import { ContactShadows, Environment, Lightformer, MeshReflectorMaterial, OrbitC
 import { useStudio } from '../store/useStudio.js'
 import { DEVICES } from '../devices/index.js'
 import { sampleAt } from '../anim/interpolate.js'
-import { applyScreenUV, useScreenTexture } from '../hooks/useScreenTexture.js'
+import { createScreenCompositor } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
 
 const DEG = Math.PI / 180
@@ -204,14 +204,18 @@ function Rig() {
   const previewLive = useStudio((s) => s.previewLive)
   const hasAnimation = useStudio((s) => s.keyframes.length >= 2)
   const draggingRef = useRef(false)
-  const lastFrameTime = useRef(-1)
 
   // The timeline owns the camera during playback and while scrubbing a
   // keyframed animation; orbit controls must stand down or they fight it.
   const timelineOwnsCamera = isPlaying || (hasAnimation && !previewLive)
 
   const device = DEVICES[deviceId] ?? DEVICES.laptop
-  const texture = useScreenTexture(video?.el ?? null)
+  const compositor = useMemo(
+    () => (video?.el ? createScreenCompositor(video.el, device.screenAspect) : null),
+    [video, device.screenAspect],
+  )
+  useEffect(() => () => compositor?.dispose(), [compositor])
+  const texture = compositor?.texture ?? null
   const target = useMemo(() => new THREE.Vector3(), [])
 
   useGradientBackground()
@@ -232,7 +236,7 @@ function Rig() {
       }
       if (lidRef.current) lidRef.current.rotation.x = (eff.device.lidAngle - 90) * -DEG
 
-      if (texture) applyScreenUV(texture, video?.el ?? null, device.screenAspect, eff.screen)
+      if (compositor) compositor.draw(eff.screen)
       if (screenMatRef.current) {
         const b = eff.screen.brightness
         screenMatRef.current.color.setRGB(b, b, b)
@@ -272,7 +276,7 @@ function Rig() {
       }
       return eff
     },
-    [camera, target, texture, video, device.screenAspect],
+    [camera, target, compositor],
   )
 
   useEffect(() => {
@@ -282,16 +286,14 @@ function Rig() {
     studioApi.canvas = gl.domElement
     studioApi.applyAt = applyAt
     studioApi.renderFrame = () => gl.render(scene, camera)
-    studioApi.markScreenDirty = () => {
-      if (texture) texture.needsUpdate = true
-    }
+    studioApi.markScreenDirty = () => compositor?.redraw()
     // Publish from here rather than main.jsx: under HMR the two files can end
     // up holding different module instances of studioApi.
     if (import.meta.env.DEV) window.__studioApi = studioApi
     return () => {
       if (studioApi.applyAt === applyAt) studioApi.applyAt = null
     }
-  }, [gl, scene, camera, applyAt, texture])
+  }, [gl, scene, camera, applyAt, compositor])
 
   const exposure = useStudio((s) => s.lighting.exposure)
   useEffect(() => {
@@ -338,17 +340,13 @@ function Rig() {
       const animated = hasAnim && !s.previewLive
       applyAt(s.playhead, { animated, driveCamera: animated || !s.orbitEnabled })
 
-      // Paused: the screen shows the frame under the playhead, like the export will.
+      // Paused: the screen shows the frame under the playhead, like the export
+      // will. The compositor redraws from the element every frame, so a landed
+      // seek reaches the GPU without any extra prodding.
       if (v && v.duration) {
         if (!v.paused) v.pause()
         const want = s.playhead % v.duration
         if (Math.abs(v.currentTime - want) > 0.08) v.currentTime = want
-        // A paused element fires no frame callbacks, so a seeked frame is never
-        // uploaded on its own — push it to the GPU once per landed seek.
-        if (texture && !v.seeking && v.currentTime !== lastFrameTime.current) {
-          lastFrameTime.current = v.currentTime
-          texture.needsUpdate = true
-        }
       }
     }
   })

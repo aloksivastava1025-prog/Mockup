@@ -66,8 +66,8 @@ export default function Timeline() {
 
         <span className="spacer" />
 
-        <label className="hint" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          Duration
+        <label className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          Length
           <input
             type="number"
             min={0.5}

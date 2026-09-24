@@ -47,7 +47,7 @@ const R5_Z = R4_Z + STEP
 
 export const macbookMeta = {
   id: 'macbook',
-  label: 'MacBook Pro 16"',
+  label: 'MacBook 16"',
   screenAspect: SCREEN_W / SCREEN_H,
   hinge: [0, BH * UNIT, (-BD / 2) * UNIT],
 }
