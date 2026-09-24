@@ -345,6 +345,11 @@ function Rig() {
       if (v && v.duration) {
         if (looped) v.currentTime = 0
         if (v.paused) v.play().catch(() => {})
+        // The element free-runs once started and drifts from the playhead (it
+        // takes a moment to spin up). Nudge it back so the preview shows the
+        // same frame the export will put at this time.
+        const want = t % v.duration
+        if (!looped && Math.abs(v.currentTime - want) > 0.25) v.currentTime = want
       }
     } else {
       // While scrubbing a keyframed timeline the playhead owns the pose;

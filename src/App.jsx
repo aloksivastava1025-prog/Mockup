@@ -56,8 +56,10 @@ export default function App() {
         if (prev?.url) URL.revokeObjectURL(prev.url)
         const next = await loadVideo(file)
         setVideo(next)
+        // Match the timeline to the whole recording, so pressing Play plays all
+        // of it rather than looping the opening seconds.
         if (Number.isFinite(next.duration) && next.duration > 0) {
-          setDuration(Math.min(15, Math.max(2, Math.round(next.duration * 2) / 2)))
+          setDuration(Math.min(300, Math.max(2, Math.round(next.duration * 2) / 2)))
         }
       } catch (e) {
         setError(e.message)
