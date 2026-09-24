@@ -26,6 +26,17 @@ Upload video → choose device → position → animate → export.
 - **Export** — renders the timeline frame by frame at the chosen resolution and
   frame rate, so the output is frame-accurate regardless of viewport performance.
 
+### Adapt
+
+On by default, in the Screen panel. The display takes the footage's aspect
+ratio so a recording fills it exactly — no crop and no letterbox bars.
+
+It works by scaling the whole chassis along its depth, not just the lid: the
+lid's length runs along its local Y and the base's along Z, and both take the
+same factor. Scaling only the lid leaves it too short to cover the base when
+closed. Turn Adapt off for true device proportions, and the Fit control
+(cover / contain / stretch) comes back.
+
 ### Transitions
 
 There is no cross-dissolve — a single render pass can only show one pose at a

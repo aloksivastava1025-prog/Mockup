@@ -52,7 +52,7 @@ function Keyboard({ bezelColor }) {
   )
 }
 
-export default function Laptop({ rootRef, lidRef, texture, screenMatRef, material, screen, lidScaleY = 1 }) {
+export default function Laptop({ rootRef, lidRef, texture, screenMatRef, material, screen, depthScale = 1 }) {
   const screenColor = useMemo(() => {
     const b = screen.brightness
     return new THREE.Color(b, b, b)
@@ -60,6 +60,8 @@ export default function Laptop({ rootRef, lidRef, texture, screenMatRef, materia
 
   return (
     <group ref={rootRef} dispose={null}>
+      {/* Adapt scales the chassis depth so a shortened lid still closes flush. */}
+      <group scale={[1, 1, depthScale]}>
       {/* ---- base / keyboard deck ---- */}
       <RoundedBox
         args={[BASE_W, BASE_H, BASE_D]}
@@ -93,9 +95,11 @@ export default function Laptop({ rootRef, lidRef, texture, screenMatRef, materia
         />
       </mesh>
 
+      </group>
+
       {/* ---- lid (hinged) ---- */}
-      <group ref={lidRef} position={laptopMeta.hinge}>
-        <group position={[0, (LID_H / 2) * lidScaleY, 0]} scale={[1, lidScaleY, 1]}>
+      <group ref={lidRef} position={[laptopMeta.hinge[0], laptopMeta.hinge[1], laptopMeta.hinge[2] * depthScale]}>
+        <group position={[0, (LID_H / 2) * depthScale, 0]} scale={[1, depthScale, 1]}>
           <RoundedBox args={[BASE_W, LID_H, LID_T]} radius={0.005} smoothness={4} castShadow receiveShadow>
             <meshStandardMaterial
               color={material.bodyColor}

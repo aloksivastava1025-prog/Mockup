@@ -195,7 +195,7 @@ function bakeGrill(cols, rows) {
   return tex
 }
 
-export default function MacBook({ rootRef, lidRef, texture, screenMatRef, material, screen, lidScaleY = 1 }) {
+export default function MacBook({ rootRef, lidRef, texture, screenMatRef, material, screen, depthScale = 1 }) {
   const keys = useMemo(() => buildKeyLayout(), [])
 
   const bounds = useMemo(() => {
@@ -250,6 +250,9 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
   return (
     <group ref={rootRef} dispose={null}>
       <group scale={UNIT}>
+        {/* Adapt scales the whole chassis along its depth, not just the lid —
+            otherwise a shortened lid no longer covers the base when closed. */}
+        <group scale={[1, 1, depthScale]}>
         {/* ── base ── */}
         <RoundedBox args={[BW, BH, BD]} radius={safeRadius([BW, BH, BD], 0.12)} smoothness={4} position={[0, BH / 2, 0]} castShadow receiveShadow>
           <meshStandardMaterial {...bodyProps} />
@@ -335,11 +338,13 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
           <meshStandardMaterial color="#606065" metalness={0.9} roughness={0.15} />
         </mesh>
 
+        </group>
+
         {/* ── lid ── */}
-        <group ref={lidRef} position={[0, BH, -BD / 2]}>
-          {/* Scaling about the hinge shortens or lengthens the lid so the
-              display matches the footage aspect when Adapt is on. */}
-          <group scale={[1, lidScaleY, 1]}>
+        <group ref={lidRef} position={[0, BH, (-BD / 2) * depthScale]}>
+          {/* The lid's length runs along local Y, so it takes the same factor
+              here that the base takes on Z. Closed, the two still match. */}
+          <group scale={[1, depthScale, 1]}>
           <RoundedBox
             args={[LW, LD, LH]}
             radius={safeRadius([LW, LD, LH], 0.1)}

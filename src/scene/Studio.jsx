@@ -212,11 +212,12 @@ function Rig() {
   const device = DEVICES[deviceId] ?? DEVICES.laptop
   const adaptScreen = useStudio((s) => s.adaptScreen)
 
-  // With Adapt on, the display takes the footage's aspect ratio and the lid is
-  // scaled vertically to match, so the recording fills it exactly.
+  // With Adapt on, the display takes the footage's aspect ratio: the chassis is
+  // scaled along its depth so the recording fills the screen exactly and the
+  // lid still closes flush over the base.
   const videoAspect = video?.width && video?.height ? video.width / video.height : null
   const effectiveAspect = adaptScreen && videoAspect ? videoAspect : device.screenAspect
-  const lidScaleY = device.screenAspect / effectiveAspect
+  const depthScale = device.screenAspect / effectiveAspect
 
   const compositor = useMemo(
     () =>
@@ -393,7 +394,7 @@ function Rig() {
         screenMatRef={screenMatRef}
         material={material}
         screen={screen}
-        lidScaleY={lidScaleY}
+        depthScale={depthScale}
       />
       <OrbitControls
         ref={controlsRef}
