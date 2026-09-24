@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 // Groups listed here are the ones a keyframe snapshots and the animator interpolates.
-export const ANIMATED_GROUPS = ['device', 'camera', 'screen']
+export const ANIMATED_GROUPS = ['device', 'camera', 'screen', 'post']
 
 const defaults = {
   device: {
@@ -23,32 +23,41 @@ const defaults = {
     brightness: 1.05,
     glow: 0.25,
   },
+  // Screen-space dip-to-colour used for transitions between shots.
+  post: {
+    fade: 0,
+    fadeColor: '#000000',
+  },
   lighting: {
-    keyIntensity: 2.6,
-    keyAzimuth: 42, // degrees around Y
-    keyElevation: 48, // degrees above horizon
-    fillIntensity: 0.7,
-    rimIntensity: 1.6,
-    ambient: 0.35,
-    envPreset: 'city',
-    envIntensity: 0.9,
+    keyIntensity: 2.1,
+    keyAzimuth: 31, // degrees around Y
+    keyElevation: 54, // degrees above horizon
+    fillIntensity: 0.45,
+    rimIntensity: 0.35,
+    ambient: 0.22,
+    hemi: 0.45,
+    exposure: 1.0,
+    envPreset: 'studio',
+    envIntensity: 0.35,
     shadows: true,
-    shadowOpacity: 0.45,
-    shadowBlur: 2.6,
+    shadowOpacity: 0.35,
+    shadowBlur: 2.2,
   },
   material: {
-    bodyColor: '#b8bcc4',
-    bodyRoughness: 0.34,
+    bodyColor: '#8c8c90',
+    bodyRoughness: 0.16,
     bodyMetalness: 0.92,
-    bezelColor: '#101114',
-    screenReflectivity: 0.18,
+    bezelColor: '#0a0a0c',
+    screenReflectivity: 0.1,
   },
   background: {
     mode: 'gradient', // 'gradient' | 'color' | 'transparent'
-    colorTop: '#20242e',
-    colorBottom: '#0a0b0e',
-    color: '#0b0c10',
+    colorTop: '#dedede',
+    colorBottom: '#cfcfcf',
+    color: '#d6d6d6',
     groundVisible: true,
+    groundStyle: 'matte', // 'matte' | 'reflective'
+    groundColor: '#d4d4d4',
   },
 }
 
@@ -57,7 +66,7 @@ const clone = (v) => JSON.parse(JSON.stringify(v))
 export const useStudio = create((set, get) => ({
   ...clone(defaults),
 
-  deviceId: 'laptop',
+  deviceId: 'macbook',
   setDevice: (deviceId) => set({ deviceId }),
 
   // ---- video source ----

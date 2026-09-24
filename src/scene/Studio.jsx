@@ -94,6 +94,7 @@ function Lights() {
   return (
     <>
       <ambientLight intensity={lighting.ambient} />
+      <hemisphereLight intensity={lighting.hemi ?? 0} groundColor="#444444" />
       <directionalLight
         ref={keyRef}
         position={keyPos}
@@ -119,27 +120,33 @@ function Lights() {
 }
 
 function Ground() {
-  const { groundVisible } = useStudio((s) => s.background)
+  const background = useStudio((s) => s.background)
   const lighting = useStudio((s) => s.lighting)
+  const { groundVisible } = background
+  const matte = (background.groundStyle ?? 'reflective') === 'matte'
 
   return (
     <>
       {groundVisible && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.0005, 0]} receiveShadow>
           <planeGeometry args={[24, 24]} />
-          <MeshReflectorMaterial
-            resolution={512}
-            mixBlur={1}
-            mixStrength={12}
-            blur={[320, 90]}
-            roughness={0.85}
-            depthScale={1.1}
-            minDepthThreshold={0.4}
-            maxDepthThreshold={1.3}
-            color="#0d0f14"
-            metalness={0.5}
-            mirror={0.35}
-          />
+          {matte ? (
+            <meshStandardMaterial color={background.groundColor ?? '#d2d2d2'} roughness={0.9} metalness={0} />
+          ) : (
+            <MeshReflectorMaterial
+              resolution={512}
+              mixBlur={1}
+              mixStrength={12}
+              blur={[320, 90]}
+              roughness={0.85}
+              depthScale={1.1}
+              minDepthThreshold={0.4}
+              maxDepthThreshold={1.3}
+              color="#0d0f14"
+              metalness={0.5}
+              mirror={0.35}
+            />
+          )}
         </mesh>
       )}
       {lighting.shadows && (
@@ -157,11 +164,35 @@ function Ground() {
   )
 }
 
+/**
+ * Full-frame dip-to-colour used for shot transitions. It is a quad parented to
+ * nothing and re-seated in front of the camera every frame, so it covers the
+ * view at any fov/aspect and is captured by the exporter like everything else.
+ */
+function FadeOverlay({ meshRef, matRef }) {
+  return (
+    <mesh ref={meshRef} renderOrder={999} frustumCulled={false} visible={false}>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial
+        ref={matRef}
+        color="#000000"
+        transparent
+        opacity={0}
+        depthTest={false}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
 function Rig() {
   const rootRef = useRef()
   const lidRef = useRef()
   const screenMatRef = useRef()
   const controlsRef = useRef()
+  const fadeMeshRef = useRef()
+  const fadeMatRef = useRef()
   const { camera, gl, scene, invalidate } = useThree()
 
   const deviceId = useStudio((s) => s.deviceId)
@@ -217,6 +248,28 @@ function Rig() {
         }
         if (controlsRef.current) controlsRef.current.target.copy(target)
       }
+
+      // Transition overlay: sit just in front of the near plane, sized to the
+      // current frustum so it always fills the frame.
+      const fadeMesh = fadeMeshRef.current
+      const fadeMat = fadeMatRef.current
+      if (fadeMesh && fadeMat) {
+        const amount = THREE.MathUtils.clamp(eff.post?.fade ?? 0, 0, 1)
+        fadeMesh.visible = amount > 0.001
+        fadeMat.opacity = amount
+        if (fadeMesh.visible) {
+          if (eff.post?.fadeColor) fadeMat.color.set(eff.post.fadeColor)
+          const dist = camera.near * 2.5
+          const h = 2 * dist * Math.tan((camera.fov * DEG) / 2)
+          fadeMesh.scale.set(h * camera.aspect * 1.2, h * 1.2, 1)
+          camera.updateMatrixWorld()
+          fadeMesh.quaternion.copy(camera.quaternion)
+          fadeMesh.position.copy(camera.position).add(
+            new THREE.Vector3(0, 0, -dist).applyQuaternion(camera.quaternion),
+          )
+          fadeMesh.updateMatrixWorld()
+        }
+      }
       return eff
     },
     [camera, target, texture, video, device.screenAspect],
@@ -232,10 +285,19 @@ function Rig() {
     studioApi.markScreenDirty = () => {
       if (texture) texture.needsUpdate = true
     }
+    // Publish from here rather than main.jsx: under HMR the two files can end
+    // up holding different module instances of studioApi.
+    if (import.meta.env.DEV) window.__studioApi = studioApi
     return () => {
       if (studioApi.applyAt === applyAt) studioApi.applyAt = null
     }
   }, [gl, scene, camera, applyAt, texture])
+
+  const exposure = useStudio((s) => s.lighting.exposure)
+  useEffect(() => {
+    gl.toneMappingExposure = exposure ?? 1
+    invalidate()
+  }, [gl, exposure, invalidate])
 
   // Keep fov in sync while the user is driving the camera by hand.
   useEffect(() => {
@@ -314,6 +376,7 @@ function Rig() {
     <>
       <Lights />
       <Ground />
+      <FadeOverlay meshRef={fadeMeshRef} matRef={fadeMatRef} />
       <DeviceComponent
         rootRef={rootRef}
         lidRef={lidRef}

@@ -20,10 +20,20 @@ Upload video → choose device → position → animate → export.
   length (FOV) are all numeric fields.
 - **Animate** — pose the scene and press **+ Keyframe** (or `K`) to pin it at the
   playhead. Two or more keyframes animate, eased with smoothstep between them.
-  The four presets (Open lid, Orbit, Push in, Hero reveal) build keyframes from
-  whatever pose you are currently in.
+  The short presets (Open lid, Orbit, Push in, Hero reveal) build keyframes from
+  whatever pose you are currently in. **Cinematic 2 min** is a full nine-shot
+  film: it sets a 120s timeline, all the keyframes, and its own lighting.
 - **Export** — renders the timeline frame by frame at the chosen resolution and
   frame rate, so the output is frame-accurate regardless of viewport performance.
+
+### Transitions
+
+There is no cross-dissolve — a single render pass can only show one pose at a
+time. Shot changes instead dip through black: `post.fade` is an animated value
+like any other, driven by a full-frame quad locked to the camera. A shot gets
+four keyframes (black, clear, clear, black), so the pose swap for the next shot
+happens while the frame is already dark. Because the overlay lives in the scene,
+the viewport and the export show exactly the same transition.
 
 ### Playhead vs. live pose
 
@@ -46,6 +56,16 @@ and produce WebM instead. Exports are video-only (no audio track).
 Devices live in `src/devices/`. A device is a component accepting
 `{ rootRef, lidRef, texture, screenMatRef, material, screen }` plus a meta object
 with `screenAspect` and a `hinge` offset; register it in `src/devices/index.js`.
+
+Two gotchas, both learned the hard way in `MacBook.jsx`:
+
+- Author geometry at whatever scale is convenient, then wrap it in a group scaled
+  so the device matches the others in world size — camera work stays portable.
+  But a light's `intensity` and `distance` are world-space scalars and are *not*
+  affected by that group scale, so never convert those into local units.
+- `RoundedBoxGeometry` inflates if the corner radius exceeds half the smallest
+  dimension. On a thin slab that quietly swells the body and swallows anything
+  resting on it. Use the `safeRadius` helper.
 The scene, controls, animator and exporter are device-agnostic, so a phone,
 tablet or monitor needs no changes outside that folder.
 
