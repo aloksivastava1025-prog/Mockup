@@ -242,6 +242,8 @@ function Rig() {
   const previewLive = useStudio((s) => s.previewLive)
   const hasAnimation = useStudio((s) => s.keyframes.length >= 2)
   const draggingRef = useRef(false)
+  const playRef = useRef(null)
+  const lastPublished = useRef(0)
 
   // The timeline owns the camera during playback and while scrubbing a
   // keyframed animation; orbit controls must stand down or they fight it.
@@ -420,13 +422,21 @@ function Rig() {
     const v = source?.kind === 'video' ? source.el : null
 
     if (s.isPlaying) {
-      let t = s.playhead + delta
+      // The playhead is advanced on a ref, not in the store. Writing it to the
+      // store every frame re-renders the timeline sixty times a second for a
+      // readout nobody can read that fast; the scene still moves at full rate.
+      if (playRef.current === null) playRef.current = s.playhead
+      let t = playRef.current + delta
       let looped = false
       if (t >= s.duration) {
         t = 0
         looped = true
       }
-      useStudio.setState({ playhead: t, previewLive: false })
+      playRef.current = t
+      if (looped || t - lastPublished.current > 0.05) {
+        lastPublished.current = t
+        useStudio.setState({ playhead: t, previewLive: false })
+      }
       applyAt(t, { animated: hasAnim, driveCamera: true })
       if (v && v.duration) {
         if (looped) v.currentTime = 0
@@ -440,6 +450,7 @@ function Rig() {
     } else {
       // While scrubbing a keyframed timeline the playhead owns the pose;
       // as soon as a control is touched the live values take over again.
+      playRef.current = null
       const animated = hasAnim && !s.previewLive
       applyAt(s.playhead, { animated, driveCamera: animated || !s.orbitEnabled })
 
@@ -514,14 +525,40 @@ function Rig() {
   )
 }
 
+/**
+ * Device pixel ratio is a trap on a big window: at 1.5 a 1920x1080 viewport is
+ * 4.6 million fragments a frame, and the preview drops to a crawl while a small
+ * pane at the same ratio sails along. Budget the drawing buffer instead, so the
+ * ratio falls back on large windows and stays crisp on small ones.
+ */
+const PIXEL_BUDGET = 2_300_000
+
+function useBudgetedDpr() {
+  const pick = () => {
+    const w = window.innerWidth
+    const h = window.innerHeight
+    const ideal = Math.min(window.devicePixelRatio || 1, 1.5)
+    const fit = Math.sqrt(PIXEL_BUDGET / Math.max(1, w * h))
+    return Math.max(0.75, Math.min(ideal, fit))
+  }
+  const [dpr, setDpr] = React.useState(pick)
+  useEffect(() => {
+    const onResize = () => setDpr(pick())
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return dpr
+}
+
 export default function Studio() {
   const camera = useStudio((s) => s.camera)
   const bg = useStudio((s) => s.background)
+  const dpr = useBudgetedDpr()
 
   return (
     <Canvas
       shadows
-      dpr={[1, 1.5]}
+      dpr={dpr}
       gl={{
         antialias: true,
         preserveDrawingBuffer: true,

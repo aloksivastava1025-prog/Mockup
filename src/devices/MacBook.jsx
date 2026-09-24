@@ -140,7 +140,7 @@ function bakeKeycaps(keys, bounds) {
     g.roundRect(x0, y0, kw, kh, r)
     g.clip()
 
-    g.fillStyle = '#1c1c21'
+    g.fillStyle = '#0c0c0f'
     g.fillRect(x0, y0, kw, kh)
 
     // concave dish: brighter toward the upper centre, darker at the rim
@@ -148,8 +148,8 @@ function bakeKeycaps(keys, bounds) {
       x0 + kw * 0.45, y0 + kh * 0.4, 0,
       x0 + kw * 0.5, y0 + kh * 0.5, Math.max(kw, kh) * 0.58,
     )
-    dish.addColorStop(0, 'rgba(180,185,200,0.14)')
-    dish.addColorStop(0.5, 'rgba(120,125,140,0.07)')
+    dish.addColorStop(0, 'rgba(150,156,172,0.07)')
+    dish.addColorStop(0.5, 'rgba(100,106,122,0.035)')
     dish.addColorStop(1, 'rgba(0,0,0,0)')
     g.fillStyle = dish
     g.fillRect(x0, y0, kw, kh)
@@ -159,10 +159,26 @@ function bakeKeycaps(keys, bounds) {
       x0 + kw / 2, y0 + kh / 2, Math.max(kw, kh) * 0.58,
     )
     rim.addColorStop(0, 'rgba(0,0,0,0)')
-    rim.addColorStop(1, 'rgba(0,0,0,0.22)')
+    rim.addColorStop(1, 'rgba(0,0,0,0.38)')
     g.fillStyle = rim
     g.fillRect(x0, y0, kw, kh)
     g.restore()
+
+    // A real key is separated from its neighbours by a shadowed gap, not by
+    // being a lighter colour. Without this the block reads as one flat plate.
+    g.strokeStyle = 'rgba(0,0,0,0.85)'
+    g.lineWidth = Math.max(2, Math.min(kw, kh) * 0.055)
+    g.beginPath()
+    g.roundRect(x0 + g.lineWidth / 2, y0 + g.lineWidth / 2, kw - g.lineWidth, kh - g.lineWidth, r)
+    g.stroke()
+
+    // a thin catch of light along the top edge of the cap
+    g.strokeStyle = 'rgba(190,196,210,0.13)'
+    g.lineWidth = Math.max(1, Math.min(kw, kh) * 0.025)
+    g.beginPath()
+    g.moveTo(x0 + r, y0 + g.lineWidth)
+    g.lineTo(x0 + kw - r, y0 + g.lineWidth)
+    g.stroke()
 
     if (k.label) {
       const size = k.label.length > 2 ? kh * 0.3 : k.label.length > 1 ? kh * 0.4 : kh * 0.5
@@ -170,7 +186,7 @@ function bakeKeycaps(keys, bounds) {
       const cx = x0 + kw / 2
       const cy = y0 + kh / 2 + 1
 
-      g.fillStyle = 'rgba(255,255,255,0.72)'
+      g.fillStyle = 'rgba(232,236,245,0.80)'
       g.font = font
       g.textAlign = 'center'
       g.textBaseline = 'middle'
@@ -183,8 +199,8 @@ function bakeKeycaps(keys, bounds) {
       lg.textBaseline = 'middle'
       // just enough bloom to read as light escaping around the glyph; more
       // than this and every key becomes a blob at shot distance
-      lg.shadowColor = 'rgba(255,255,255,0.75)'
-      lg.shadowBlur = 2.5
+      lg.shadowColor = 'rgba(255,255,255,0.5)'
+      lg.shadowBlur = 1.2
       lg.fillText(k.label, cx, cy)
       lg.shadowBlur = 0
     }
@@ -307,7 +323,7 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
             position={[k.x, BASE_TOP + KEY_H / 2 + 0.004, k.z]}
             castShadow
           >
-            <meshStandardMaterial color="#17171c" metalness={0.08} roughness={0.78} />
+            <meshStandardMaterial color="#0d0d11" metalness={0.06} roughness={0.72} />
           </mesh>
         ))}
 

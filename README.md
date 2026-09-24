@@ -183,8 +183,23 @@ re-uploading a multi-megabyte texture every frame was costing roughly two
 thirds of the frame budget. The exporter switches mipmapping back on for the
 final pass, where sharpness is what matters and throughput is not.
 
-If the viewport feels slow, check how many other WebGL pages are open: several
-live contexts on one GPU slow each other down badly.
+The drawing buffer is budgeted rather than pinned to a device pixel ratio. At
+1.5 a 1920x1080 viewport is 4.6 million fragments a frame, which crawls, while
+a small pane at the same ratio sails along — so the ratio is chosen to keep the
+buffer near 2.3 megapixels and falls back on large windows (1.5 at 1280x720,
+1.05 at 1920x1080, 0.79 at 2560x1440).
+
+During playback the playhead advances on a ref and is published to the store
+about twenty times a second rather than every frame. The scene still animates
+at full rate; what stops is re-rendering the timeline sixty times a second for
+a readout nobody can read that fast.
+
+Measured on the 40s preset in a small pane: median frame 17-18ms, with shadows
+costing 1.3ms and the props 0.7ms — neither is the bottleneck, so if playback
+is not smooth look at the window size first.
+
+If the viewport feels slow, also check how many other WebGL pages are open:
+several live contexts on one GPU slow each other down badly.
 
 ## Tests
 
