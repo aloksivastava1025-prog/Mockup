@@ -28,6 +28,8 @@ export default function LeftPanel() {
   const setAxis = useStudio((s) => s.setAxis)
   const orbitEnabled = useStudio((s) => s.orbitEnabled)
   const setOrbitEnabled = useStudio((s) => s.setOrbitEnabled)
+  const adaptScreen = useStudio((s) => s.adaptScreen)
+  const setAdaptScreen = useStudio((s) => s.setAdaptScreen)
 
   return (
     <aside className="sidebar left">
@@ -80,6 +82,13 @@ export default function LeftPanel() {
       </Panel>
 
       <Panel title="Screen" right={<ResetBtn group="screen" />} defaultOpen={false}>
+        <Toggle label="Adapt" value={adaptScreen} onChange={setAdaptScreen} />
+        <p className="hint">
+          {adaptScreen
+            ? 'Display reshaped to your footage — fills it exactly, no crop or bars.'
+            : 'Using the real device aspect. Fit decides how the footage sits inside it.'}
+        </p>
+        {!adaptScreen && (
         <Segmented
           label="Fit"
           value={screen.fit}
@@ -90,6 +99,7 @@ export default function LeftPanel() {
           ]}
           onChange={(v) => update('screen', { fit: v })}
         />
+        )}
         <Slider label="Zoom" value={screen.scale} min={0.3} max={3} step={0.01} onChange={(v) => update('screen', { scale: v })} />
         <Slider label="Offset X" value={screen.offsetX} min={-0.5} max={0.5} step={0.005} onChange={(v) => update('screen', { offsetX: v })} />
         <Slider label="Offset Y" value={screen.offsetY} min={-0.5} max={0.5} step={0.005} onChange={(v) => update('screen', { offsetY: v })} />

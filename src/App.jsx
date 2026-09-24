@@ -19,7 +19,14 @@ function loadVideo(file) {
       // Playback is driven by the timeline, not by the element itself — just
       // prime one decoded frame so the display isn't blank before first play.
       el.currentTime = 0
-      resolve({ el, url, name: file.name, duration: el.duration })
+      resolve({
+        el,
+        url,
+        name: file.name,
+        duration: el.duration,
+        width: el.videoWidth,
+        height: el.videoHeight,
+      })
     }
     el.onerror = () => reject(new Error(`Could not decode "${file.name}". Try an MP4 (H.264) or WebM file.`))
   })

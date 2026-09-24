@@ -210,9 +210,20 @@ function Rig() {
   const timelineOwnsCamera = isPlaying || (hasAnimation && !previewLive)
 
   const device = DEVICES[deviceId] ?? DEVICES.laptop
+  const adaptScreen = useStudio((s) => s.adaptScreen)
+
+  // With Adapt on, the display takes the footage's aspect ratio and the lid is
+  // scaled vertically to match, so the recording fills it exactly.
+  const videoAspect = video?.width && video?.height ? video.width / video.height : null
+  const effectiveAspect = adaptScreen && videoAspect ? videoAspect : device.screenAspect
+  const lidScaleY = device.screenAspect / effectiveAspect
+
   const compositor = useMemo(
-    () => (video?.el ? createScreenCompositor(video.el, device.screenAspect) : null),
-    [video, device.screenAspect],
+    () =>
+      video?.el
+        ? createScreenCompositor(video.el, effectiveAspect, gl.capabilities.getMaxAnisotropy())
+        : null,
+    [video, effectiveAspect, gl],
   )
   useEffect(() => () => compositor?.dispose(), [compositor])
   const texture = compositor?.texture ?? null
@@ -382,6 +393,7 @@ function Rig() {
         screenMatRef={screenMatRef}
         material={material}
         screen={screen}
+        lidScaleY={lidScaleY}
       />
       <OrbitControls
         ref={controlsRef}

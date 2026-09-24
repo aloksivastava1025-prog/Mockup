@@ -68,6 +68,12 @@ export const useStudio = create((set, get) => ({
   ...clone(defaults),
 
   deviceId: 'macbook',
+
+  // Reshape the device display to the footage's aspect ratio. With this on the
+  // recording fills the screen exactly — no crop and no letterbox bars. Kept
+  // out of the animated groups so presets can never clobber it.
+  adaptScreen: true,
+  setAdaptScreen: (adaptScreen) => set({ adaptScreen }),
   setDevice: (deviceId) => set({ deviceId }),
 
   // ---- video source ----

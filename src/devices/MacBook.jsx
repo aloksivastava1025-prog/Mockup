@@ -195,7 +195,7 @@ function bakeGrill(cols, rows) {
   return tex
 }
 
-export default function MacBook({ rootRef, lidRef, texture, screenMatRef, material, screen }) {
+export default function MacBook({ rootRef, lidRef, texture, screenMatRef, material, screen, lidScaleY = 1 }) {
   const keys = useMemo(() => buildKeyLayout(), [])
 
   const bounds = useMemo(() => {
@@ -337,6 +337,9 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
 
         {/* ── lid ── */}
         <group ref={lidRef} position={[0, BH, -BD / 2]}>
+          {/* Scaling about the hinge shortens or lengthens the lid so the
+              display matches the footage aspect when Adapt is on. */}
+          <group scale={[1, lidScaleY, 1]}>
           <RoundedBox
             args={[LW, LD, LH]}
             radius={safeRadius([LW, LD, LH], 0.1)}
@@ -401,6 +404,7 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
           {screen.glow > 0.001 && (
             <pointLight position={[0, LD / 2, 9]} intensity={screen.glow * 0.5} distance={0.4} decay={2} color="#cfe2ff" />
           )}
+          </group>
         </group>
       </group>
     </group>

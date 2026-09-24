@@ -9,7 +9,7 @@ import * as THREE from 'three'
  * across the bars. Compositing lets `contain` draw real letterbox bars, so a
  * recording that is wider than the device screen is shown whole.
  */
-export function createScreenCompositor(videoEl, screenAspect) {
+export function createScreenCompositor(videoEl, screenAspect, maxAnisotropy = 1) {
   const canvas = document.createElement('canvas')
   const vw = videoEl.videoWidth || 1920
   const width = Math.round(Math.min(2560, Math.max(1280, vw)))
@@ -17,11 +17,18 @@ export function createScreenCompositor(videoEl, screenAspect) {
   canvas.height = Math.round(width / screenAspect)
 
   const ctx = canvas.getContext('2d', { alpha: false })
+  ctx.imageSmoothingQuality = 'high'
+
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.minFilter = THREE.LinearFilter
+  // The display is almost always minified — a ~1920px wide recording lands on a
+  // few hundred pixels of output. Without mipmaps and anisotropy that samples
+  // one texel per pixel and small text turns to mush and shimmers while the
+  // camera moves. Both are regenerated per frame; the cost is worth it.
+  texture.minFilter = THREE.LinearMipmapLinearFilter
   texture.magFilter = THREE.LinearFilter
-  texture.generateMipmaps = false
+  texture.generateMipmaps = true
+  texture.anisotropy = maxAnisotropy
 
   let last = null
 

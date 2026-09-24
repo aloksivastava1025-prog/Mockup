@@ -13,7 +13,9 @@ export default function RightPanel() {
 
   const [fps, setFps] = useState(30)
   const [resolution, setResolution] = useState('1080p')
-  const [bitrateMbps, setBitrateMbps] = useState(8)
+  // Screen recordings are full of small text, which is where a low bitrate
+  // shows first — default to the higher setting rather than the smaller file.
+  const [bitrateMbps, setBitrateMbps] = useState(14)
   const [error, setError] = useState(null)
   const [lastMode, setLastMode] = useState(null)
 
