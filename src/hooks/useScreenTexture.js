@@ -13,9 +13,19 @@ export function createScreenCompositor(source, screenAspect, maxAnisotropy = 1) 
   const el = source.el
   const canvas = document.createElement('canvas')
   const sw = source.width || 1920
-  const width = Math.round(Math.min(2560, Math.max(1280, sw)))
-  canvas.width = width
-  canvas.height = Math.round(width / screenAspect)
+  const FULL_W = Math.round(Math.min(2560, Math.max(1280, sw)))
+  // The display never occupies more than a few hundred pixels on screen, so the
+  // preview composites at a fraction of the source resolution. Re-drawing and
+  // re-uploading a full-size canvas 30 times a second is the single biggest
+  // cost of video playback; the exporter switches to FULL_W for the real pass.
+  const PREVIEW_W = Math.round(Math.min(1024, FULL_W))
+
+  const setCanvasWidth = (w) => {
+    if (canvas.width === w) return
+    canvas.width = w
+    canvas.height = Math.round(w / screenAspect)
+  }
+  setCanvasWidth(PREVIEW_W)
 
   const ctx = canvas.getContext('2d', { alpha: false })
   ctx.imageSmoothingQuality = 'high'
@@ -35,12 +45,17 @@ export function createScreenCompositor(source, screenAspect, maxAnisotropy = 1) 
   let last = null
   let lastSig = null
 
-  /** Mipmapping is worth its cost only for a final render. */
+  /**
+   * One switch for the whole quality mode: the preview runs small and
+   * unmipmapped for throughput, a final render goes full size and sharp.
+   */
   const setFast = (fast) => {
+    setCanvasWidth(fast ? PREVIEW_W : FULL_W)
     texture.generateMipmaps = !fast
     texture.minFilter = fast ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter
     lastSig = null
     texture.needsUpdate = true
+    if (last) draw(last, true)
   }
 
   const draw = (screen, force = false) => {

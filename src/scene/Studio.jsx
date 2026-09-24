@@ -87,6 +87,17 @@ function EnvRig({ preset, intensity }) {
 function Lights() {
   const lighting = useStudio((s) => s.lighting)
   const keyRef = useRef()
+  const isPlaying = useStudio((s) => s.isPlaying)
+  const pose = useStudio((s) => s.device)
+
+  // Likewise the key light's shadow map: re-render it when the pose or the
+  // lighting changes, not on every frame of video playback.
+  useEffect(() => {
+    const light = keyRef.current
+    if (!light?.shadow) return
+    light.shadow.autoUpdate = isPlaying
+    light.shadow.needsUpdate = true
+  }, [isPlaying, pose, lighting])
 
   const keyPos = useMemo(() => {
     const r = 3
@@ -129,6 +140,15 @@ function Ground() {
   const { groundVisible } = background
   const matte = (background.groundStyle ?? 'reflective') === 'matte'
 
+  // Contact shadows cost a full extra scene render per frame. While a video
+  // plays the device and camera are usually still — only the screen content
+  // changes — so the shadow is identical frame after frame. Recompute it once
+  // per pose instead, and only fall back to continuous updates when the
+  // timeline is actually moving the device.
+  const isPlaying = useStudio((s) => s.isPlaying)
+  const pose = useStudio((s) => s.device)
+  const poseKey = `${pose.position.join()}|${pose.rotation.join()}|${pose.lidAngle}|${pose.scale}`
+
   return (
     <>
       {groundVisible && (
@@ -155,13 +175,14 @@ function Ground() {
       )}
       {lighting.shadows && (
         <ContactShadows
+          key={isPlaying ? 'animating' : poseKey}
           position={[0, 0.001, 0]}
           opacity={lighting.shadowOpacity}
           scale={1.4}
           blur={lighting.shadowBlur}
           far={0.55}
           resolution={512}
-          frames={Infinity}
+          frames={isPlaying ? Infinity : 1}
         />
       )}
     </>
