@@ -16,6 +16,7 @@ export const laptopMeta = {
   screenAspect: SCREEN_W / SCREEN_H,
   // Where the hinge sits relative to the device origin (origin = base resting on y=0).
   hinge: [0, BASE_H, -BASE_D / 2 + 0.005],
+  frame: { d: 0.88, ty: 0.12, fov: 34 },
 }
 
 function Keyboard({ bezelColor }) {
@@ -52,7 +53,7 @@ function Keyboard({ bezelColor }) {
   )
 }
 
-export default function Laptop({ rootRef, lidRef, texture, screenMatRef, material, screen, depthScale = 1 }) {
+export default function Laptop({ rootRef, lidRef, texture, screenMatRef, material, screen, aspectScale = 1 }) {
   const screenColor = useMemo(() => {
     const b = screen.brightness
     return new THREE.Color(b, b, b)
@@ -61,7 +62,7 @@ export default function Laptop({ rootRef, lidRef, texture, screenMatRef, materia
   return (
     <group ref={rootRef} dispose={null}>
       {/* Adapt scales the chassis depth so a shortened lid still closes flush. */}
-      <group scale={[1, 1, depthScale]}>
+      <group scale={[1, 1, aspectScale]}>
       {/* ---- base / keyboard deck ---- */}
       <RoundedBox
         args={[BASE_W, BASE_H, BASE_D]}
@@ -98,8 +99,8 @@ export default function Laptop({ rootRef, lidRef, texture, screenMatRef, materia
       </group>
 
       {/* ---- lid (hinged) ---- */}
-      <group ref={lidRef} position={[laptopMeta.hinge[0], laptopMeta.hinge[1], laptopMeta.hinge[2] * depthScale]}>
-        <group position={[0, (LID_H / 2) * depthScale, 0]} scale={[1, depthScale, 1]}>
+      <group ref={lidRef} position={[laptopMeta.hinge[0], laptopMeta.hinge[1], laptopMeta.hinge[2] * aspectScale]}>
+        <group position={[0, (LID_H / 2) * aspectScale, 0]} scale={[1, aspectScale, 1]}>
           <RoundedBox args={[BASE_W, LID_H, LID_T]} radius={0.005} smoothness={4} castShadow receiveShadow>
             <meshStandardMaterial
               color={material.bodyColor}

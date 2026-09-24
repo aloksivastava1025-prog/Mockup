@@ -10,6 +10,10 @@ import { studioApi } from './studioApi.js'
 
 const DEG = Math.PI / 180
 
+// How far Adapt may deform a device before we decide the pairing is nonsense.
+const ADAPT_MIN = 0.6
+const ADAPT_MAX = 1.7
+
 function useGradientBackground() {
   const { scene } = useThree()
   const background = useStudio((s) => s.background)
@@ -100,7 +104,7 @@ function Lights() {
         position={keyPos}
         intensity={lighting.keyIntensity}
         castShadow={lighting.shadows}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0005}
         shadow-normalBias={0.02}
       >
@@ -128,7 +132,7 @@ function Ground() {
   return (
     <>
       {groundVisible && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.0005, 0]} receiveShadow>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.0005, 0]} receiveShadow userData={{ ground: true }}>
           <planeGeometry args={[24, 24]} />
           {matte ? (
             <meshStandardMaterial color={background.groundColor ?? '#d2d2d2'} roughness={0.9} metalness={0} />
@@ -156,7 +160,7 @@ function Ground() {
           scale={1.4}
           blur={lighting.shadowBlur}
           far={0.55}
-          resolution={1024}
+          resolution={512}
           frames={Infinity}
         />
       )}
@@ -198,7 +202,7 @@ function Rig() {
   const deviceId = useStudio((s) => s.deviceId)
   const material = useStudio((s) => s.material)
   const screen = useStudio((s) => s.screen)
-  const video = useStudio((s) => s.video)
+  const source = useStudio((s) => s.source)
   const orbitEnabled = useStudio((s) => s.orbitEnabled)
   const isPlaying = useStudio((s) => s.isPlaying)
   const previewLive = useStudio((s) => s.previewLive)
@@ -212,19 +216,25 @@ function Rig() {
   const device = DEVICES[deviceId] ?? DEVICES.laptop
   const adaptScreen = useStudio((s) => s.adaptScreen)
 
-  // With Adapt on, the display takes the footage's aspect ratio: the chassis is
-  // scaled along its depth so the recording fills the screen exactly and the
-  // lid still closes flush over the base.
-  const videoAspect = video?.width && video?.height ? video.width / video.height : null
-  const effectiveAspect = adaptScreen && videoAspect ? videoAspect : device.screenAspect
-  const depthScale = device.screenAspect / effectiveAspect
+  // With Adapt on the display takes the source's aspect ratio, stretched along
+  // the display's height axis. Clamped, because some pairings are nonsense: a
+  // landscape recording on a portrait phone, or a full-page screenshot on a
+  // laptop, would otherwise deform the device beyond recognition. Outside the
+  // clamp we keep the real device shape and let Fit (or scroll) handle it.
+  const sourceAspect = source?.width && source?.height ? source.width / source.height : null
+  const wanted = adaptScreen && sourceAspect ? device.screenAspect / sourceAspect : 1
+  // Either adapt fully or not at all — a half-applied clamp would deform the
+  // device without ever matching the source, which is the worst of both.
+  const adapted = !!sourceAspect && adaptScreen && wanted >= ADAPT_MIN && wanted <= ADAPT_MAX
+  const aspectScale = adapted ? wanted : 1
+  const effectiveAspect = adapted ? sourceAspect : device.screenAspect
 
   const compositor = useMemo(
     () =>
-      video?.el
-        ? createScreenCompositor(video.el, effectiveAspect, gl.capabilities.getMaxAnisotropy())
+      source
+        ? createScreenCompositor(source, effectiveAspect, gl.capabilities.getMaxAnisotropy())
         : null,
-    [video, effectiveAspect, gl],
+    [source, effectiveAspect, gl],
   )
   useEffect(() => () => compositor?.dispose(), [compositor])
   const texture = compositor?.texture ?? null
@@ -299,6 +309,7 @@ function Rig() {
     studioApi.applyAt = applyAt
     studioApi.renderFrame = () => gl.render(scene, camera)
     studioApi.markScreenDirty = () => compositor?.redraw()
+    studioApi.setFastTexture = (fast) => compositor?.setFast(fast)
     // Publish from here rather than main.jsx: under HMR the two files can end
     // up holding different module instances of studioApi.
     if (import.meta.env.DEV) window.__studioApi = studioApi
@@ -331,7 +342,7 @@ function Rig() {
     if (exporting) return // the exporter drives applyAt + render itself
 
     const hasAnim = s.keyframes.length >= 2
-    const v = video?.el ?? null
+    const v = source?.kind === 'video' ? source.el : null
 
     if (s.isPlaying) {
       let t = s.playhead + delta
@@ -357,13 +368,18 @@ function Rig() {
       const animated = hasAnim && !s.previewLive
       applyAt(s.playhead, { animated, driveCamera: animated || !s.orbitEnabled })
 
-      // Paused: the screen shows the frame under the playhead, like the export
-      // will. The compositor redraws from the element every frame, so a landed
-      // seek reaches the GPU without any extra prodding.
       if (v && v.duration) {
-        if (!v.paused) v.pause()
-        const want = s.playhead % v.duration
-        if (Math.abs(v.currentTime - want) > 0.08) v.currentTime = want
+        if (s.autoplay) {
+          // Live preview: let the recording run on the device while you work.
+          if (v.paused) v.play().catch(() => {})
+        } else {
+          // Locked to the playhead, which is what the export will render. The
+          // compositor redraws from the element every frame, so a landed seek
+          // reaches the GPU without any extra prodding.
+          if (!v.paused) v.pause()
+          const want = s.playhead % v.duration
+          if (Math.abs(v.currentTime - want) > 0.08) v.currentTime = want
+        }
       }
     }
   })
@@ -399,7 +415,7 @@ function Rig() {
         screenMatRef={screenMatRef}
         material={material}
         screen={screen}
-        depthScale={depthScale}
+        aspectScale={aspectScale}
       />
       <OrbitControls
         ref={controlsRef}
@@ -429,11 +445,11 @@ export default function Studio() {
   return (
     <Canvas
       shadows
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
       gl={{
         antialias: true,
         preserveDrawingBuffer: true,
-        alpha: bg.mode === 'transparent',
+        alpha: true, // must exist up front; the context cannot gain alpha later
         toneMapping: THREE.ACESFilmicToneMapping,
       }}
       camera={{ position: camera.position, fov: camera.fov, near: 0.01, far: 100 }}

@@ -11,6 +11,8 @@ export const studioApi = {
   applyAt: null,
   /** renderFrame() — draws one frame with the current state. */
   renderFrame: null,
-  /** markScreenDirty() — forces the video texture to re-upload after a seek. */
+  /** markScreenDirty() — forces the screen texture to re-upload after a seek. */
   markScreenDirty: null,
+  /** setFastTexture(bool) — drops mipmapping for draft-speed exports. */
+  setFastTexture: null,
 }

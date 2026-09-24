@@ -50,6 +50,7 @@ export const macbookMeta = {
   label: 'MacBook 16"',
   screenAspect: SCREEN_W / SCREEN_H,
   hinge: [0, BH * UNIT, (-BD / 2) * UNIT],
+  frame: { d: 0.88, ty: 0.12, fov: 34 },
 }
 
 /** Builds the full key layout once: one entry per physical key. */
@@ -195,7 +196,7 @@ function bakeGrill(cols, rows) {
   return tex
 }
 
-export default function MacBook({ rootRef, lidRef, texture, screenMatRef, material, screen, depthScale = 1 }) {
+export default function MacBook({ rootRef, lidRef, texture, screenMatRef, material, screen, aspectScale = 1 }) {
   const keys = useMemo(() => buildKeyLayout(), [])
 
   const bounds = useMemo(() => {
@@ -252,7 +253,7 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
       <group scale={UNIT}>
         {/* Adapt scales the whole chassis along its depth, not just the lid —
             otherwise a shortened lid no longer covers the base when closed. */}
-        <group scale={[1, 1, depthScale]}>
+        <group scale={[1, 1, aspectScale]}>
         {/* ── base ── */}
         <RoundedBox args={[BW, BH, BD]} radius={safeRadius([BW, BH, BD], 0.12)} smoothness={4} position={[0, BH / 2, 0]} castShadow receiveShadow>
           <meshStandardMaterial {...bodyProps} />
@@ -341,10 +342,10 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
         </group>
 
         {/* ── lid ── */}
-        <group ref={lidRef} position={[0, BH, (-BD / 2) * depthScale]}>
+        <group ref={lidRef} position={[0, BH, (-BD / 2) * aspectScale]}>
           {/* The lid's length runs along local Y, so it takes the same factor
               here that the base takes on Z. Closed, the two still match. */}
-          <group scale={[1, depthScale, 1]}>
+          <group scale={[1, aspectScale, 1]}>
           <RoundedBox
             args={[LW, LD, LH]}
             radius={safeRadius([LW, LD, LH], 0.1)}

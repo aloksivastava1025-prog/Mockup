@@ -1,8 +1,8 @@
 # 3D Device Mockup Studio
 
-Browser-based 3D mockup editor: drop in a website screen recording, map it onto a
-realistic laptop display as a live video texture, pose the scene, animate it, and
-export a finished showcase video.
+Browser-based 3D mockup editor: drop in a website screen recording or
+screenshot, map it onto a realistic device display, pose the scene, animate it,
+and export a finished video or still.
 
 ```bash
 npm install
@@ -11,10 +11,25 @@ npm run dev     # http://localhost:5183
 
 ## How it works
 
-Upload video → choose device → position → animate → export.
+Add media → choose device → position → animate → export.
 
-- **Upload** — drag an MP4/WebM onto the viewport, or use *Upload video*. The clip
-  becomes a `THREE.VideoTexture` on the laptop display.
+The source can be a **screen recording** or a **screenshot**. A full-page
+screenshot taller than the display is scrolled through rather than squashed:
+`screen.scroll` runs 0 (top of page) to 1 (bottom), and the *Scroll page*
+preset keyframes it end to end.
+
+Output goes to **MP4** (the timeline) or **PNG** (the current frame), in
+16:9, 9:16, 1:1 or 4:5. A PNG can be exported as a cutout — transparent
+background with the floor removed. **Draft** renders small, at 24fps and
+without mipmapping, for checking timing before committing to a full render.
+
+Projects save to a `.mockup.json` file (Ctrl+S) holding the scene but not the
+media, which is far too large for it; reopening asks you to re-attach the
+source. The document also autosaves to localStorage, offered as *Restore last
+session*. `Ctrl+Z` / `Ctrl+Shift+Z` undo and redo.
+
+- **Add media** — drag an MP4/WebM/PNG/JPG onto the viewport, or use *Add media*.
+  It is composited onto the device display.
 - **Position** — drag in the viewport to orbit, or type exact values. Device
   position/rotation/scale, lid angle, camera position, look-at point and focal
   length (FOV) are all numeric fields.
@@ -52,8 +67,11 @@ While you are adjusting controls the viewport shows the *live* values. Scrubbing
 the timeline or pressing play hands control to the keyframed animation. Touching
 any control switches back to live — so editing never fights the timeline.
 
-The video element is driven by the playhead rather than playing on its own: the
-frame you see under the playhead is exactly the frame the export will contain.
+**Autoplay** (Screen panel, on by default) runs the recording live on the device
+while you compose. Turn it off and the display shows exactly the frame under the
+playhead — which is what the export will contain, so match this when keyframing
+against specific moments. Either way the export is unaffected: it seeks the
+source per frame.
 
 ## Export pipeline
 
@@ -80,6 +98,17 @@ Two gotchas, both learned the hard way in `MacBook.jsx`:
 The scene, controls, animator and exporter are device-agnostic, so a phone,
 tablet or monitor needs no changes outside that folder.
 
+## Performance
+
+The preview renders without mipmapping on the screen texture and skips the
+canvas redraw entirely when neither the source frame nor the framing changed —
+re-uploading a multi-megabyte texture every frame was costing roughly two
+thirds of the frame budget. The exporter switches mipmapping back on for the
+final pass, where sharpness is what matters and throughput is not.
+
+If the viewport feels slow, check how many other WebGL pages are open: several
+live contexts on one GPU slow each other down badly.
+
 ## Layout
 
 ```
@@ -92,12 +121,16 @@ src/
   export/exportVideo.js WebCodecs → MP4, MediaRecorder fallback
   store/useStudio.js    all editor state
   ui/                   control panels and timeline
+  media/loadSource.js   video + image loading behind one shape
+  project/project.js    save / open / autosave
 ```
 
 ## Keyboard
 
 - `Space` — play / pause
 - `K` — add a keyframe at the playhead
+- `Ctrl/Cmd + Z` — undo, `Ctrl/Cmd + Shift + Z` — redo
+- `Ctrl/Cmd + S` — save the project
 
 ## Notes
 

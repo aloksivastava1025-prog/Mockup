@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { ColorField, Panel, Segmented, Slider, Toggle } from './controls.jsx'
-import { downloadBlob, exportVideo, RESOLUTIONS } from '../export/exportVideo.js'
+import { ASPECTS, dimensionsFor, downloadBlob, exportImage, exportVideo, SIZE_LABELS } from '../export/exportVideo.js'
 
 export default function RightPanel() {
   const lighting = useStudio((s) => s.lighting)
@@ -9,21 +9,37 @@ export default function RightPanel() {
   const background = useStudio((s) => s.background)
   const update = useStudio((s) => s.update)
   const exporting = useStudio((s) => s.exporting)
-  const hasVideo = useStudio((s) => !!s.video)
+  const hasSource = useStudio((s) => !!s.source)
 
   const [fps, setFps] = useState(30)
-  const [resolution, setResolution] = useState('1080p')
+  const [aspect, setAspect] = useState('16:9')
+  const [size, setSize] = useState('M')
+  const [draft, setDraft] = useState(false)
+  const [transparent, setTransparent] = useState(false)
   // Screen recordings are full of small text, which is where a low bitrate
   // shows first — default to the higher setting rather than the smaller file.
   const [bitrateMbps, setBitrateMbps] = useState(14)
   const [error, setError] = useState(null)
   const [lastMode, setLastMode] = useState(null)
 
+  const dims = dimensionsFor(aspect, size, draft)
+
   const runExport = async () => {
     setError(null)
     try {
-      const { blob, filename, mode } = await exportVideo({ fps, resolution, bitrateMbps })
+      const { blob, filename, mode } = await exportVideo({ fps, aspect, size, bitrateMbps, draft })
       setLastMode(mode)
+      downloadBlob(blob, filename)
+    } catch (e) {
+      console.error(e)
+      setError(e.message || String(e))
+    }
+  }
+
+  const runImage = async () => {
+    setError(null)
+    try {
+      const { blob, filename } = await exportImage({ aspect, size, transparent })
       downloadBlob(blob, filename)
     } catch (e) {
       console.error(e)
@@ -111,10 +127,17 @@ export default function RightPanel() {
 
       <Panel title="Export">
         <Segmented
+          label="Format"
+          value={aspect}
+          options={Object.keys(ASPECTS).map((k) => ({ value: k, label: k }))}
+          onChange={setAspect}
+        />
+        <p className="hint">{ASPECTS[aspect].label} · {dims[0]}×{dims[1]}</p>
+        <Segmented
           label="Size"
-          value={resolution}
-          options={Object.keys(RESOLUTIONS).map((k) => ({ value: k, label: k }))}
-          onChange={setResolution}
+          value={size}
+          options={Object.keys(SIZE_LABELS).map((k) => ({ value: k, label: SIZE_LABELS[k] }))}
+          onChange={setSize}
         />
         <Segmented
           label="Rate"
@@ -136,15 +159,33 @@ export default function RightPanel() {
           ]}
           onChange={setBitrateMbps}
         />
-        <button className="btn primary wide" disabled={!!exporting || !hasVideo} onClick={runExport}>
-          {exporting ? `${exporting.phase}… ${Math.round(exporting.progress * 100)}%` : 'Export video'}
+        <Toggle label="Draft" value={draft} onChange={setDraft} />
+        <p className="hint">
+          {draft
+            ? 'Small, 24fps, no mipmaps — roughly 3x faster for checking timing.'
+            : 'Full resolution and sharpening. Slower; use Draft to check timing first.'}
+        </p>
+
+        <button className="btn primary wide" disabled={!!exporting || !hasSource} onClick={runExport}>
+          {exporting ? `${exporting.phase}… ${Math.round(exporting.progress * 100)}%` : draft ? 'Export draft' : 'Export video'}
         </button>
+
+        <Toggle label="Cutout" value={transparent} onChange={setTransparent} />
+        <button className="btn wide" disabled={!!exporting || !hasSource} onClick={runImage}>
+          Export PNG (this frame)
+        </button>
+        <p className="hint">
+          {transparent
+            ? 'PNG with a transparent background — drops the floor and backdrop.'
+            : 'PNG of the current playhead at full resolution.'}
+        </p>
+
         {exporting && (
           <div className="progress">
             <i style={{ width: `${exporting.progress * 100}%` }} />
           </div>
         )}
-        {!hasVideo && <p className="hint">Upload a screen recording first.</p>}
+        {!hasSource && <p className="hint">Add a recording or screenshot first.</p>}
         {error && <p className="hint" style={{ color: 'var(--danger)' }}>{error}</p>}
         {lastMode === 'realtime-webm' && (
           <p className="hint">

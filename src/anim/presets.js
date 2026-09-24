@@ -169,6 +169,14 @@ const CINEMATIC_LOOK = {
 
 export const PRESETS = [
   {
+    id: 'scroll',
+    label: 'Scroll page',
+    build: (d) => [
+      kf(0, { ...snap({ screen: { scroll: 0 } }), post: { fade: 0, fadeColor: '#000000' } }),
+      kf(d, { ...snap({ screen: { scroll: 1 } }), post: { fade: 0, fadeColor: '#000000' } }),
+    ],
+  },
+  {
     id: 'cinematic',
     label: 'Cinematic 2 min',
     duration: 120,
@@ -233,6 +241,7 @@ export function applyPreset(id) {
   const look = preset.look
   const s = useStudio.getState()
 
+  useStudio.getState().commit()
   useStudio.setState({
     keyframes,
     playhead: 0,

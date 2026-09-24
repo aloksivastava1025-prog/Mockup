@@ -4,73 +4,77 @@ import LeftPanel from './ui/LeftPanel.jsx'
 import RightPanel from './ui/RightPanel.jsx'
 import Timeline from './ui/Timeline.jsx'
 import { useStudio } from './store/useStudio.js'
+import { isSupported, loadSource } from './media/loadSource.js'
+import { downloadProject, openProjectFile, readAutosave, startAutosave } from './project/project.js'
 
-function loadVideo(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file)
-    const el = document.createElement('video')
-    el.src = url
-    el.muted = true
-    el.loop = true
-    el.playsInline = true
-    el.preload = 'auto'
-    el.crossOrigin = 'anonymous'
-    el.onloadedmetadata = () => {
-      // Playback is driven by the timeline, not by the element itself — just
-      // prime one decoded frame so the display isn't blank before first play.
-      el.currentTime = 0
-      resolve({
-        el,
-        url,
-        name: file.name,
-        duration: el.duration,
-        width: el.videoWidth,
-        height: el.videoHeight,
-      })
-    }
-    el.onerror = () => reject(new Error(`Could not decode "${file.name}". Try an MP4 (H.264) or WebM file.`))
-  })
-}
+const isProjectFile = (file) => file.name.endsWith('.json')
 
 export default function App() {
-  const video = useStudio((s) => s.video)
-  const setVideo = useStudio((s) => s.setVideo)
+  const source = useStudio((s) => s.source)
+  const setSource = useStudio((s) => s.setSource)
   const setDuration = useStudio((s) => s.setDuration)
   const exporting = useStudio((s) => s.exporting)
   const setPlaying = useStudio((s) => s.setPlaying)
 
   const inputRef = useRef(null)
+  const projectRef = useRef(null)
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState(null)
+  const [restorable, setRestorable] = useState(null)
 
   const accept = useCallback(
     async (file) => {
       if (!file) return
-      if (!file.type.startsWith('video/')) {
-        setError('That file is not a video.')
-        return
-      }
       setError(null)
       try {
-        const prev = useStudio.getState().video
+        if (isProjectFile(file)) {
+          await openProjectFile(file)
+          setRestorable(null)
+          return
+        }
+        if (!isSupported(file)) {
+          setError('Drop a video (MP4/WebM) or an image (PNG/JPG).')
+          return
+        }
+        const prev = useStudio.getState().source
         if (prev?.url) URL.revokeObjectURL(prev.url)
-        const next = await loadVideo(file)
-        setVideo(next)
-        // Match the timeline to the whole recording, so pressing Play plays all
-        // of it rather than looping the opening seconds.
-        if (Number.isFinite(next.duration) && next.duration > 0) {
+        const next = await loadSource(file)
+        setSource(next)
+        // Match the timeline to the whole recording, so Play plays all of it.
+        if (next.kind === 'video' && Number.isFinite(next.duration) && next.duration > 0) {
           setDuration(Math.min(300, Math.max(2, Math.round(next.duration * 2) / 2)))
         }
       } catch (e) {
         setError(e.message)
       }
     },
-    [setVideo, setDuration],
+    [setSource, setDuration],
   )
+
+  // Offer to restore the last session rather than silently overwriting it.
+  useEffect(() => {
+    const saved = readAutosave()
+    if (saved) setRestorable(saved)
+    return startAutosave()
+  }, [])
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return
+      const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)
+      const mod = e.metaKey || e.ctrlKey
+
+      if (mod && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) useStudio.getState().redo()
+        else useStudio.getState().undo()
+        return
+      }
+      if (mod && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        downloadProject()
+        return
+      }
+      if (typing) return
       if (e.code === 'Space') {
         e.preventDefault()
         setPlaying(!useStudio.getState().isPlaying)
@@ -85,20 +89,35 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          3D Device Mockup <span>Studio</span>
+          Mockup <span>Studio</span>
         </div>
-        <span className="badge">{video ? video.name : 'no footage loaded'}</span>
+        <span className="badge">{source ? source.name : 'no footage loaded'}</span>
         <span className="spacer" />
         {error && <span className="hint" style={{ color: 'var(--danger)' }}>{error}</span>}
+
         <input
-          ref={inputRef}
+          ref={projectRef}
           type="file"
-          accept="video/*"
+          accept="application/json,.json"
           hidden
           onChange={(e) => accept(e.target.files?.[0])}
         />
-        <button className="btn" onClick={() => inputRef.current?.click()}>
-          {video ? 'Replace video' : 'Upload video'}
+        <button className="btn" onClick={() => projectRef.current?.click()}>
+          Open
+        </button>
+        <button className="btn" onClick={downloadProject} title="Save project (Ctrl+S)">
+          Save
+        </button>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="video/*,image/*"
+          hidden
+          onChange={(e) => accept(e.target.files?.[0])}
+        />
+        <button className="btn primary" onClick={() => inputRef.current?.click()}>
+          {source ? 'Replace' : 'Add media'}
         </button>
       </header>
 
@@ -119,20 +138,36 @@ export default function App() {
       >
         <Studio />
 
-        {(!video || dragging) && (
+        {(!source || dragging) && (
           <div className={`dropzone ${dragging ? 'active' : ''}`}>
-            <strong style={{ fontSize: 15 }}>Drop a screen recording here</strong>
-            <span className="hint">MP4 or WebM · it becomes a live texture on the laptop display</span>
+            <strong style={{ fontSize: 14 }}>Drop a recording or a screenshot</strong>
+            <span className="hint">
+              MP4 / WebM / PNG / JPG — a tall page screenshot can scroll on the display
+            </span>
             <button className="btn primary" style={{ pointerEvents: 'auto' }} onClick={() => inputRef.current?.click()}>
               Choose file
             </button>
+            {restorable && (
+              <button
+                className="btn"
+                style={{ pointerEvents: 'auto' }}
+                onClick={() => {
+                  useStudio.getState().loadProject(restorable)
+                  setRestorable(null)
+                }}
+              >
+                Restore last session
+              </button>
+            )}
           </div>
         )}
 
         {exporting && (
           <div className="overlay">
-            <strong>Rendering {Math.round(exporting.progress * 100)}%</strong>
-            <div className="progress" style={{ width: 260 }}>
+            <strong>
+              {exporting.phase === 'draft' ? 'Draft render' : 'Rendering'} {Math.round(exporting.progress * 100)}%
+            </strong>
+            <div className="progress" style={{ width: 240 }}>
               <i style={{ width: `${exporting.progress * 100}%` }} />
             </div>
             <span className="hint">{exporting.phase} — keep this tab in the foreground</span>

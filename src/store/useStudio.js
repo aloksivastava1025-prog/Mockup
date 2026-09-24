@@ -21,6 +21,7 @@ const defaults = {
     offsetY: 0,
     fit: 'contain', // show the whole recording; bars fill any aspect mismatch
     letterbox: '#000000',
+    scroll: 0, // 0 = top of a tall screenshot, 1 = bottom
     brightness: 1.05,
     glow: 0.25,
   },
@@ -64,6 +65,39 @@ const defaults = {
 
 const clone = (v) => JSON.parse(JSON.stringify(v))
 
+/** The parts of the store that make up a saved project / an undo step. */
+export const DOC_KEYS = [
+  'device',
+  'camera',
+  'screen',
+  'post',
+  'lighting',
+  'material',
+  'background',
+  'deviceId',
+  'adaptScreen',
+  'keyframes',
+  'duration',
+]
+
+const snapshot = (s) => Object.fromEntries(DOC_KEYS.map((k) => [k, clone(s[k])]))
+
+// Dragging a slider fires continuously; without coalescing, one drag would cost
+// hundreds of undo steps. Edits to the same field inside this window collapse
+// into the single step that precedes the whole drag.
+const COALESCE_MS = 700
+let lastEditKey = null
+let lastEditAt = 0
+
+function historyPatch(s, key) {
+  const now = Date.now()
+  const sameEdit = key !== null && key === lastEditKey && now - lastEditAt < COALESCE_MS
+  lastEditKey = key
+  lastEditAt = now
+  if (sameEdit) return {}
+  return { past: [...s.past, snapshot(s)].slice(-60), future: [] }
+}
+
 export const useStudio = create((set, get) => ({
   ...clone(defaults),
 
@@ -73,12 +107,18 @@ export const useStudio = create((set, get) => ({
   // recording fills the screen exactly — no crop and no letterbox bars. Kept
   // out of the animated groups so presets can never clobber it.
   adaptScreen: true,
-  setAdaptScreen: (adaptScreen) => set({ adaptScreen }),
-  setDevice: (deviceId) => set({ deviceId }),
+  setAdaptScreen: (adaptScreen) => set((s) => ({ ...historyPatch(s, null), adaptScreen })),
+  setDevice: (deviceId) => set((s) => ({ ...historyPatch(s, null), deviceId })),
 
-  // ---- video source ----
-  video: null, // { el, url, name, duration }
-  setVideo: (video) => set({ video }),
+  // Play the recording live on the device while composing, instead of showing
+  // the single frame under the playhead. Not part of the document: it only
+  // affects the preview, never the export.
+  autoplay: true,
+  setAutoplay: (autoplay) => set({ autoplay }),
+
+  // ---- screen source: a recording or a screenshot ----
+  source: null, // { kind, el, url, name, duration, width, height }
+  setSource: (source) => set({ source }),
 
   // When true the viewport shows the values in this store ("live" pose). Touching
   // any control switches it on; scrubbing or playing hands control back to the
@@ -86,15 +126,24 @@ export const useStudio = create((set, get) => ({
   previewLive: true,
 
   // ---- generic group update ----
-  update: (group, patch) => set((s) => ({ [group]: { ...s[group], ...patch }, previewLive: true })),
+  update: (group, patch) =>
+    set((s) => ({
+      ...historyPatch(s, `${group}.${Object.keys(patch).join(',')}`),
+      [group]: { ...s[group], ...patch },
+      previewLive: true,
+    })),
   setAxis: (group, key, index, value) =>
     set((s) => {
       const next = [...s[group][key]]
       next[index] = value
-      return { [group]: { ...s[group], [key]: next }, previewLive: true }
+      return {
+        ...historyPatch(s, `${group}.${key}.${index}`),
+        [group]: { ...s[group], [key]: next },
+        previewLive: true,
+      }
     }),
-  resetGroup: (group) => set({ [group]: clone(defaults[group]) }),
-  resetAll: () => set(clone(defaults)),
+  resetGroup: (group) => set((s) => ({ ...historyPatch(s, null), [group]: clone(defaults[group]) })),
+  resetAll: () => set((s) => ({ ...historyPatch(s, null), ...clone(defaults) })),
 
   // ---- orbit / interaction ----
   orbitEnabled: true,
@@ -111,15 +160,17 @@ export const useStudio = create((set, get) => ({
 
   addKeyframe: (time) =>
     set((s) => {
+      const hist = historyPatch(s, null)
       const t = Math.min(s.duration, Math.max(0, time ?? s.playhead))
       const state = Object.fromEntries(ANIMATED_GROUPS.map((g) => [g, clone(s[g])]))
       const rest = s.keyframes.filter((k) => Math.abs(k.time - t) > 1e-3)
       const next = [...rest, { id: `kf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, time: t, state }]
       next.sort((a, b) => a.time - b.time)
-      return { keyframes: next }
+      return { ...hist, keyframes: next }
     }),
-  removeKeyframe: (id) => set((s) => ({ keyframes: s.keyframes.filter((k) => k.id !== id) })),
-  clearKeyframes: () => set({ keyframes: [] }),
+  removeKeyframe: (id) =>
+    set((s) => ({ ...historyPatch(s, null), keyframes: s.keyframes.filter((k) => k.id !== id) })),
+  clearKeyframes: () => set((s) => ({ ...historyPatch(s, null), keyframes: [] })),
   applyKeyframe: (id) =>
     set((s) => {
       const kf = s.keyframes.find((k) => k.id === id)
@@ -130,6 +181,38 @@ export const useStudio = create((set, get) => ({
   // ---- export ----
   exporting: null, // { progress, phase } | null
   setExporting: (exporting) => set({ exporting }),
+
+  // ---- undo / redo ----
+  // Only the document is versioned; the loaded media, playhead and transient
+  // export state are not, so undo never yanks the source out from under you.
+  past: [],
+  future: [],
+  commit: () =>
+    set((s) => ({
+      past: [...s.past, snapshot(s)].slice(-60),
+      future: [],
+    })),
+  undo: () =>
+    set((s) => {
+      if (!s.past.length) return {}
+      const prev = s.past[s.past.length - 1]
+      return { ...clone(prev), past: s.past.slice(0, -1), future: [snapshot(s), ...s.future].slice(0, 60) }
+    }),
+  redo: () =>
+    set((s) => {
+      if (!s.future.length) return {}
+      const next = s.future[0]
+      return { ...clone(next), past: [...s.past, snapshot(s)].slice(-60), future: s.future.slice(1) }
+    }),
+
+  // ---- project ----
+  toProject: () => ({ version: 1, app: 'mockup-studio', ...snapshot(get()), sourceName: get().source?.name ?? null }),
+  loadProject: (data) => {
+    if (!data || data.app !== 'mockup-studio') throw new Error('Not a Mockup Studio project file.')
+    const next = {}
+    for (const k of DOC_KEYS) if (data[k] !== undefined) next[k] = clone(data[k])
+    set({ ...next, past: [], future: [], playhead: 0, isPlaying: false, previewLive: true })
+  },
 
   getAnimatedSnapshot: () => {
     const s = get()
