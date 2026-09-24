@@ -21,6 +21,14 @@ export default function App() {
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState(null)
   const [restorable, setRestorable] = useState(null)
+  const panels = useStudio((s) => s.panels)
+  const togglePanel = useStudio((s) => s.togglePanel)
+  const toggleBothPanels = useStudio((s) => s.toggleBothPanels)
+
+  const SIDE = { left: 'clamp(186px, 19vw, 248px)', right: 'clamp(206px, 22vw, 248px)', rail: '22px' }
+  const gridTemplateColumns = `${panels.left ? SIDE.left : SIDE.rail} minmax(0, 1fr) ${
+    panels.right ? SIDE.right : SIDE.rail
+  }`
 
   const accept = useCallback(
     async (file) => {
@@ -84,6 +92,12 @@ export default function App() {
         return
       }
       if (typing) return
+      // Tab hides both panels, the way every editor does it
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        useStudio.getState().toggleBothPanels()
+        return
+      }
       if (e.code === 'Space') {
         e.preventDefault()
         setPlaying(!useStudio.getState().isPlaying)
@@ -94,8 +108,10 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [setPlaying])
 
+  const bothOpen = panels.left && panels.right
+
   return (
-    <div className="app">
+    <div className="app" style={{ gridTemplateColumns }}>
       <header className="topbar">
         <div className="brand">
           Mockup <span>Studio</span>
@@ -128,9 +144,25 @@ export default function App() {
         <button className="btn primary" onClick={() => inputRef.current?.click()}>
           {source ? 'Replace' : 'Add media'}
         </button>
+
+        <button
+          className="btn"
+          onClick={toggleBothPanels}
+          title={`${bothOpen ? 'Hide' : 'Show'} both panels (Tab)`}
+        >
+          {bothOpen ? '⇤ ⇥' : '⇥ ⇤'}
+        </button>
       </header>
 
-      <LeftPanel />
+      {panels.left ? (
+        <LeftPanel onCollapse={() => togglePanel('left')} />
+      ) : (
+        <aside className="rail left">
+          <button onClick={() => togglePanel('left')} title="Show left panel">
+            ▶
+          </button>
+        </aside>
+      )}
 
       <main
         className="stage"
@@ -184,7 +216,15 @@ export default function App() {
         )}
       </main>
 
-      <RightPanel />
+      {panels.right ? (
+        <RightPanel onCollapse={() => togglePanel('right')} />
+      ) : (
+        <aside className="rail right">
+          <button onClick={() => togglePanel('right')} title="Show right panel">
+            ◀
+          </button>
+        </aside>
+      )}
       <Timeline />
     </div>
   )

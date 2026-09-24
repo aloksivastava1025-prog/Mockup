@@ -18,7 +18,7 @@ function ResetBtn({ group }) {
   )
 }
 
-export default function LeftPanel() {
+export default function LeftPanel({ onCollapse }) {
   const deviceId = useStudio((s) => s.deviceId)
   const setDevice = useStudio((s) => s.setDevice)
   const device = useStudio((s) => s.device)
@@ -57,6 +57,11 @@ export default function LeftPanel() {
 
   return (
     <aside className="sidebar left">
+      <div className="panel-bar left">
+        <button onClick={onCollapse} title="Collapse this panel">
+          ◀
+        </button>
+      </div>
       <Panel title="Device">
         <div className="field stacked">
           <div className="seg">

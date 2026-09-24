@@ -5,7 +5,7 @@ import { ASPECTS, dimensionsFor, downloadBlob, exportImage, exportVideo, SIZE_LA
 import { LOCATIONS, applyLocation } from '../scene/locations.js'
 import { SURFACES } from '../scene/surfaces.js'
 
-export default function RightPanel() {
+export default function RightPanel({ onCollapse }) {
   const lighting = useStudio((s) => s.lighting)
   const material = useStudio((s) => s.material)
   const background = useStudio((s) => s.background)
@@ -52,6 +52,11 @@ export default function RightPanel() {
 
   return (
     <aside className="sidebar right">
+      <div className="panel-bar right">
+        <button onClick={onCollapse} title="Collapse this panel">
+          ▶
+        </button>
+      </div>
       <Panel title="Lighting">
         <Slider label="Key" value={lighting.keyIntensity} min={0} max={8} step={0.05} onChange={(v) => update('lighting', { keyIntensity: v })} />
         <Slider label="Direction" value={lighting.keyAzimuth} min={-180} max={180} step={1} unit="°" precision={0} onChange={(v) => update('lighting', { keyAzimuth: v })} />

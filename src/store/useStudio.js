@@ -150,6 +150,17 @@ export const useStudio = create((set, get) => ({
   resetGroup: (group) => set((s) => ({ ...historyPatch(s, null), [group]: clone(defaults[group]) })),
   resetAll: () => set((s) => ({ ...historyPatch(s, null), ...clone(defaults) })),
 
+  // ---- panel layout ----
+  // Pure UI, so deliberately outside DOC_KEYS: collapsing a panel is not an
+  // edit and has no business in undo or in a saved project.
+  panels: { left: true, right: true },
+  togglePanel: (side) => set((s) => ({ panels: { ...s.panels, [side]: !s.panels[side] } })),
+  toggleBothPanels: () =>
+    set((s) => {
+      const open = !(s.panels.left && s.panels.right)
+      return { panels: { left: open, right: open } }
+    }),
+
   // ---- orbit / interaction ----
   orbitEnabled: true,
   setOrbitEnabled: (orbitEnabled) => set({ orbitEnabled }),

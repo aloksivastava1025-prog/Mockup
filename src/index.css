@@ -69,6 +69,49 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 0;
 }
 .sidebar.left { grid-area: left; }
+
+/* collapsed panel: a thin rail that keeps the way back visible */
+.rail {
+  background: var(--panel);
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+}
+.rail.left { grid-area: left; border-right: 1px solid var(--line); }
+.rail.right { grid-area: right; border-left: 1px solid var(--line); }
+.rail button {
+  width: 20px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  border-radius: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1;
+}
+.rail button:hover { background: var(--field-hover); color: var(--text); }
+
+/* collapse control, pinned to the panel's inner edge */
+.panel-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  height: 22px;
+  align-items: center;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.panel-bar.left { justify-content: flex-end; }
+.panel-bar button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  padding: 0 8px;
+  height: 100%;
+}
+.panel-bar button:hover { color: var(--text); background: var(--field-hover); }
 .sidebar.right { grid-area: right; border-right: none; border-left: 1px solid var(--line); }
 
 .stage {

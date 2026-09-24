@@ -234,6 +234,7 @@ src/
 - `K` — add a keyframe at the playhead
 - `Ctrl/Cmd + Z` — undo, `Ctrl/Cmd + Shift + Z` — redo
 - `Ctrl/Cmd + S` — save the project
+- `Tab` — hide or show both side panels
 
 ## Notes
 
