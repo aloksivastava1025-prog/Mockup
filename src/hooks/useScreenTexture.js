@@ -139,7 +139,10 @@ export function createScreenSource(source, screenAspect, maxAnisotropy = 1) {
     const wantDirect = isIdentity(screen)
     active = wantDirect ? direct : composited
     if (!wantDirect) composite(screen, force)
-    else if (!isVideo) direct.needsUpdate = true
+    // A still needs one upload. A playing video uploads itself through the
+    // browser's frame callbacks, but a forced redraw means the exporter just
+    // seeked a paused element — push that frame rather than race the callback.
+    else if (!isVideo || force) direct.needsUpdate = true
   }
 
   /**

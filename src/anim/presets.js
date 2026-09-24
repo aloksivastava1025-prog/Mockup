@@ -167,7 +167,30 @@ const CINEMATIC_LOOK = {
   },
 }
 
+/**
+ * One continuous 20s move: a closed lid revealed from a low angle, opening as
+ * the camera rises, an orbit across the front, then closing again. No cuts —
+ * it fades up at the start and out at the end, and never stops moving.
+ */
+const REVEAL_ORBIT_20 = () => [
+  shot(0,    { ry: -26, lid: 2,   az: 46,  el: 7,  d: 0.62, fov: 28, ty: 0.020, b: 0.5,  g: 0 }, 1),
+  shot(1.4,  { ry: -25, lid: 2,   az: 44,  el: 8,  d: 0.59, fov: 28, ty: 0.022, b: 0.5,  g: 0 }, 0),
+  shot(5,    { ry: -24, lid: 8,   az: 40,  el: 10, d: 0.56, fov: 28, ty: 0.030, b: 0.6,  g: 0.05 }, 0),
+  shot(9,    { ry: -21, lid: 104, az: 33,  el: 22, d: 0.80, fov: 30, ty: 0.100, b: 1.0,  g: 0.35 }, 0),
+  shot(12.5, { ry: -10, lid: 104, az: 6,   el: 24, d: 0.82, fov: 31, ty: 0.115 }, 0),
+  shot(16,   { ry: 8,   lid: 104, az: -30, el: 21, d: 0.80, fov: 31, ty: 0.112 }, 0),
+  shot(18.4, { ry: 12,  lid: 44,  az: -20, el: 22, d: 0.86, fov: 32, ty: 0.080, b: 0.8, g: 0.15 }, 0),
+  shot(20,   { ry: 14,  lid: 2,   az: -12, el: 21, d: 0.92, fov: 32, ty: 0.040, b: 0.5, g: 0 }, 1),
+]
+
 export const PRESETS = [
+  {
+    id: 'reveal20',
+    label: 'Reveal + orbit 20s',
+    duration: 20,
+    look: CINEMATIC_LOOK,
+    build: () => REVEAL_ORBIT_20(),
+  },
   {
     id: 'scroll',
     label: 'Scroll page',
