@@ -104,8 +104,12 @@ function buildKeyLayout() {
 }
 
 /**
- * Bakes every key cap — the concave dish shading and the backlit label — into a
- * single transparent texture laid over the key bodies. One mesh instead of ~160.
+ * Bakes the key caps into one texture laid over the key bodies — one mesh
+ * instead of ~160 — and the labels into a second.
+ *
+ * The labels are separated out so they can drive an emissive map: a real
+ * keyboard is backlit, and without that the deck falls into the lid's shadow in
+ * any moody lighting and the whole keyboard reads as a black slab.
  */
 function bakeKeycaps(keys, bounds) {
   const PX = 170 // canvas pixels per author unit
@@ -115,6 +119,11 @@ function bakeKeycaps(keys, bounds) {
   c.width = Math.round(w * PX)
   c.height = Math.round(d * PX)
   const g = c.getContext('2d')
+
+  const lc = document.createElement('canvas')
+  lc.width = c.width
+  lc.height = c.height
+  const lg = lc.getContext('2d')
 
   const toX = (x) => (x - bounds.minX) * PX
   const toY = (z) => (z - bounds.minZ) * PX
@@ -131,7 +140,7 @@ function bakeKeycaps(keys, bounds) {
     g.roundRect(x0, y0, kw, kh, r)
     g.clip()
 
-    g.fillStyle = '#141418'
+    g.fillStyle = '#1c1c21'
     g.fillRect(x0, y0, kw, kh)
 
     // concave dish: brighter toward the upper centre, darker at the rim
@@ -157,21 +166,37 @@ function bakeKeycaps(keys, bounds) {
 
     if (k.label) {
       const size = k.label.length > 2 ? kh * 0.3 : k.label.length > 1 ? kh * 0.4 : kh * 0.5
-      g.fillStyle = 'rgba(255,255,255,0.62)'
-      g.font = `500 ${size}px Inter, system-ui, -apple-system, sans-serif`
+      const font = `500 ${size}px Inter, system-ui, -apple-system, sans-serif`
+      const cx = x0 + kw / 2
+      const cy = y0 + kh / 2 + 1
+
+      g.fillStyle = 'rgba(255,255,255,0.72)'
+      g.font = font
       g.textAlign = 'center'
       g.textBaseline = 'middle'
-      g.shadowColor = 'rgba(255,255,255,0.18)'
-      g.shadowBlur = 5
-      g.fillText(k.label, x0 + kw / 2, y0 + kh / 2 + 1)
-      g.shadowBlur = 0
+      g.fillText(k.label, cx, cy)
+
+      // the same glyph again, on its own, to light from behind
+      lg.fillStyle = '#ffffff'
+      lg.font = font
+      lg.textAlign = 'center'
+      lg.textBaseline = 'middle'
+      // just enough bloom to read as light escaping around the glyph; more
+      // than this and every key becomes a blob at shot distance
+      lg.shadowColor = 'rgba(255,255,255,0.75)'
+      lg.shadowBlur = 2.5
+      lg.fillText(k.label, cx, cy)
+      lg.shadowBlur = 0
     }
   })
 
-  const tex = new THREE.CanvasTexture(c)
-  tex.colorSpace = THREE.SRGBColorSpace
-  tex.anisotropy = 8
-  return tex
+  const mk = (src) => {
+    const t = new THREE.CanvasTexture(src)
+    t.colorSpace = THREE.SRGBColorSpace
+    t.anisotropy = 8
+    return t
+  }
+  return { caps: mk(c), labels: mk(lc) }
 }
 
 /** Perforated speaker grill, baked rather than built from ~140 cylinders. */
@@ -210,7 +235,7 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
     return b
   }, [keys])
 
-  const capTex = useMemo(() => bakeKeycaps(keys, bounds), [keys, bounds])
+  const { caps: capTex, labels: labelTex } = useMemo(() => bakeKeycaps(keys, bounds), [keys, bounds])
   const grillTex = useMemo(() => bakeGrill(5, 28), [])
 
   // One geometry per distinct key footprint, shared across every key that uses it.
@@ -226,10 +251,11 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
   React.useEffect(
     () => () => {
       capTex.dispose()
+      labelTex.dispose()
       grillTex.dispose()
       keyGeometries.forEach((g) => g.dispose())
     },
-    [capTex, grillTex, keyGeometries],
+    [capTex, labelTex, grillTex, keyGeometries],
   )
 
   const screenColor = useMemo(() => {
@@ -281,14 +307,22 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
             position={[k.x, BASE_TOP + KEY_H / 2 + 0.004, k.z]}
             castShadow
           >
-            <meshStandardMaterial color="#0d0d10" metalness={0.08} roughness={0.78} />
+            <meshStandardMaterial color="#17171c" metalness={0.08} roughness={0.78} />
           </mesh>
         ))}
 
-        {/* baked key caps + labels */}
+        {/* baked key caps, with the glyphs lit from behind */}
         <mesh position={[kbCx, BASE_TOP + KEY_H + 0.006, kbCz]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[kbW, kbD]} />
-          <meshStandardMaterial map={capTex} transparent roughness={0.82} metalness={0.05} />
+          <meshStandardMaterial
+            map={capTex}
+            transparent
+            roughness={0.82}
+            metalness={0.05}
+            emissive="#eaf2ff"
+            emissiveMap={labelTex}
+            emissiveIntensity={material.keyBacklight ?? 0.5}
+          />
         </mesh>
 
         {/* Touch ID */}

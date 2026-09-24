@@ -214,7 +214,60 @@ const DRONE_REVEAL = () => [
   shot(37,   { ry: 14,  lid: 2,   az: -18, el: 24, d: 1.00, fov: 32, ty: 0.045, b: 0.5, g: 0 }, 1),
 ]
 
+/**
+ * 40s product film to a fixed beat sheet. One continuous camera — the only cut
+ * is to black on the last frame.
+ *
+ *   0-4   drone-style extreme wide, moving forward
+ *   4-7   accelerate toward the product
+ *   7-11  slow three-quarter reveal, still pushing
+ *   11-15 low side angle, product rotates
+ *   15-19 180 degree orbit
+ *   19-23 push toward the display, lid opens during the push
+ *   23-27 extreme close-up, then pull back as it rotates
+ *   27-31 fast three-quarter / side / front
+ *   31-35 slow hero orbit, camera rising
+ *   35-38 straight in to the hero composition
+ *   38-40 dead still, then cut to black
+ */
+const HERO_40 = () => [
+  shot(0,    { ry: -20, lid: 2,   az: 25,  el: 70, d: 3.20, fov: 45, ty: 0.020, b: 0.5, g: 0 }, 1),
+  shot(1.5,  { ry: -21, lid: 2,   az: 27,  el: 65, d: 2.85, fov: 45, ty: 0.020, b: 0.5, g: 0 }, 0),
+  shot(4,    { ry: -23, lid: 2,   az: 30,  el: 56, d: 2.35, fov: 44, ty: 0.020, b: 0.5, g: 0 }, 0),
+  shot(7,    { ry: -28, lid: 2,   az: 38,  el: 38, d: 1.35, fov: 40, ty: 0.025, b: 0.5, g: 0 }, 0),
+  shot(11,   { ry: -34, lid: 2,   az: 46,  el: 22, d: 0.82, fov: 34, ty: 0.045, b: 0.5, g: 0 }, 0),
+  shot(15,   { ry: -44, lid: 2,   az: 78,  el: 8,  d: 0.60, fov: 30, ty: 0.032, b: 0.5, g: 0 }, 0),
+  // lid stays at exactly 2 through here: equal values either side are held
+  // flat, which stops the big opening move from easing backwards into the
+  // orbit and cracking the lid before its beat
+  shot(19,   { ry: -30, lid: 2,   az: -102, el: 12, d: 0.68, fov: 31, ty: 0.045, b: 0.5, g: 0 }, 0),
+  shot(23,   { ry: -18, lid: 104, az: -34, el: 16, d: 0.52, fov: 27, ty: 0.105, b: 1.0, g: 0.35 }, 0),
+  shot(25,   { ry: -12, lid: 104, az: -18, el: 13, d: 0.40, fov: 24, ty: 0.116, zoom: 1.05 }, 0),
+  shot(27,   { ry: 2,   lid: 104, az: -4,  el: 19, d: 0.74, fov: 31, ty: 0.112 }, 0),
+  // fast transitions: three-quarter, side, front
+  shot(28.2, { ry: 6,   lid: 104, az: 42,  el: 20, d: 0.72, fov: 31, ty: 0.112 }, 0),
+  shot(29.6, { ry: 10,  lid: 104, az: 86,  el: 15, d: 0.70, fov: 31, ty: 0.105 }, 0),
+  shot(31,   { ry: 4,   lid: 104, az: 2,   el: 18, d: 0.74, fov: 31, ty: 0.112 }, 0),
+  // slow hero orbit, rising
+  shot(35,   { ry: -6,  lid: 104, az: -52, el: 30, d: 0.80, fov: 31, ty: 0.115 }, 0),
+  // in to the hero, decelerating
+  shot(36.8, { ry: -10, lid: 104, az: -32, el: 25, d: 0.66, fov: 29, ty: 0.115 }, 0),
+  shot(38,   { ry: -12, lid: 104, az: -22, el: 22, d: 0.60, fov: 28, ty: 0.115 }, 0),
+  // dead still
+  shot(38.3, { ry: -12, lid: 104, az: -22, el: 22, d: 0.60, fov: 28, ty: 0.115 }, 0),
+  shot(39.9, { ry: -12, lid: 104, az: -22, el: 22, d: 0.60, fov: 28, ty: 0.115 }, 0),
+  // cut to black
+  shot(40,   { ry: -12, lid: 104, az: -22, el: 22, d: 0.60, fov: 28, ty: 0.115 }, 1),
+]
+
 export const PRESETS = [
+  {
+    id: 'hero40',
+    label: 'Hero film 40s',
+    duration: 40,
+    look: CONCRETE_LOOK,
+    build: () => HERO_40(),
+  },
   {
     id: 'drone',
     label: 'Drone reveal 37s',

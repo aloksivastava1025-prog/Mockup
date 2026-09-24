@@ -85,6 +85,7 @@ export default function RightPanel() {
         <Slider label="Roughness" value={material.bodyRoughness} min={0} max={1} step={0.01} onChange={(v) => update('material', { bodyRoughness: v })} />
         <Slider label="Metalness" value={material.bodyMetalness} min={0} max={1} step={0.01} onChange={(v) => update('material', { bodyMetalness: v })} />
         <ColorField label="Bezel" value={material.bezelColor} onChange={(v) => update('material', { bezelColor: v })} />
+        <Slider label="Backlight" value={material.keyBacklight ?? 0.5} min={0} max={2} step={0.02} onChange={(v) => update('material', { keyBacklight: v })} />
         <Slider label="Glass" value={material.screenReflectivity} min={0} max={0.6} step={0.005} onChange={(v) => update('material', { screenReflectivity: v })} />
       </Panel>
 

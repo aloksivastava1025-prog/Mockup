@@ -52,6 +52,7 @@ const defaults = {
     bodyMetalness: 0.92,
     bezelColor: '#0a0a0c',
     screenReflectivity: 0.1,
+    keyBacklight: 0.5,
   },
   background: {
     mode: 'gradient', // 'gradient' | 'color' | 'transparent'
