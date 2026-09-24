@@ -22,10 +22,10 @@ function loadVideo(file, url) {
     el.playsInline = true
     el.preload = 'auto'
     el.crossOrigin = 'anonymous'
-    el.onloadedmetadata = () => {
-      // Playback is driven by the timeline, not the element — prime one decoded
-      // frame so the display isn't blank before the first play.
-      el.currentTime = 0
+    // Resolve once a frame is actually decoded rather than at metadata: it
+    // avoids an opening seek, which otherwise delays the first play by the
+    // length of that seek plus the buffering it forces.
+    el.onloadeddata = () => {
       resolve({
         kind: 'video',
         el,

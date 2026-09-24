@@ -13,6 +13,6 @@ export const studioApi = {
   renderFrame: null,
   /** markScreenDirty() — forces the screen texture to re-upload after a seek. */
   markScreenDirty: null,
-  /** setFastTexture(bool) — drops mipmapping for draft-speed exports. */
-  setFastTexture: null,
+  /** setSharpTexture(bool) — enables mipmapping for a final render. */
+  setSharpTexture: null,
 }

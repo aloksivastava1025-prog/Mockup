@@ -40,6 +40,8 @@ export default function App() {
         if (prev?.url) URL.revokeObjectURL(prev.url)
         const next = await loadSource(file)
         setSource(next)
+        // Start immediately rather than waiting for the render loop to notice.
+        if (next.kind === 'video' && useStudio.getState().autoplay) next.el.play().catch(() => {})
         // Match the timeline to the whole recording, so Play plays all of it.
         if (next.kind === 'video' && Number.isFinite(next.duration) && next.duration > 0) {
           setDuration(Math.min(300, Math.max(2, Math.round(next.duration * 2) / 2)))

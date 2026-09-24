@@ -5,7 +5,7 @@ import { ContactShadows, Environment, Lightformer, MeshReflectorMaterial, OrbitC
 import { useStudio } from '../store/useStudio.js'
 import { DEVICES } from '../devices/index.js'
 import { sampleAt } from '../anim/interpolate.js'
-import { createScreenCompositor } from '../hooks/useScreenTexture.js'
+import { createScreenSource } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
 
 const DEG = Math.PI / 180
@@ -250,15 +250,13 @@ function Rig() {
   const aspectScale = adapted ? wanted : 1
   const effectiveAspect = adapted ? sourceAspect : device.screenAspect
 
-  const compositor = useMemo(
+  const screenSource = useMemo(
     () =>
-      source
-        ? createScreenCompositor(source, effectiveAspect, gl.capabilities.getMaxAnisotropy())
-        : null,
+      source ? createScreenSource(source, effectiveAspect, gl.capabilities.getMaxAnisotropy()) : null,
     [source, effectiveAspect, gl],
   )
-  useEffect(() => () => compositor?.dispose(), [compositor])
-  const texture = compositor?.texture ?? null
+  useEffect(() => () => screenSource?.dispose(), [screenSource])
+  const texture = screenSource?.texture ?? null
   const target = useMemo(() => new THREE.Vector3(), [])
 
   useGradientBackground()
@@ -279,7 +277,16 @@ function Rig() {
       }
       if (lidRef.current) lidRef.current.rotation.x = (eff.device.lidAngle - 90) * -DEG
 
-      if (compositor) compositor.draw(eff.screen)
+      if (screenSource) {
+        screenSource.draw(eff.screen)
+        // The active texture can switch between the direct and composited
+        // paths as the framing changes, so keep the material pointing at it.
+        const mat = screenMatRef.current
+        if (mat && mat.map !== screenSource.texture) {
+          mat.map = screenSource.texture
+          mat.needsUpdate = true
+        }
+      }
       if (screenMatRef.current) {
         const b = eff.screen.brightness
         screenMatRef.current.color.setRGB(b, b, b)
@@ -319,7 +326,7 @@ function Rig() {
       }
       return eff
     },
-    [camera, target, compositor],
+    [camera, target, screenSource],
   )
 
   useEffect(() => {
@@ -329,15 +336,15 @@ function Rig() {
     studioApi.canvas = gl.domElement
     studioApi.applyAt = applyAt
     studioApi.renderFrame = () => gl.render(scene, camera)
-    studioApi.markScreenDirty = () => compositor?.redraw()
-    studioApi.setFastTexture = (fast) => compositor?.setFast(fast)
+    studioApi.markScreenDirty = () => screenSource?.redraw()
+    studioApi.setSharpTexture = (on) => screenSource?.setSharp(on)
     // Publish from here rather than main.jsx: under HMR the two files can end
     // up holding different module instances of studioApi.
     if (import.meta.env.DEV) window.__studioApi = studioApi
     return () => {
       if (studioApi.applyAt === applyAt) studioApi.applyAt = null
     }
-  }, [gl, scene, camera, applyAt, compositor])
+  }, [gl, scene, camera, applyAt, screenSource])
 
   const exposure = useStudio((s) => s.lighting.exposure)
   useEffect(() => {

@@ -93,7 +93,7 @@ export async function exportImage({ aspect = '16:9', size = 'M', transparent = f
   const prevBackground = scene.background
 
   useStudio.getState().setExporting({ phase: 'rendering', progress: 0 })
-  studioApi.setFastTexture?.(false)
+  studioApi.setSharpTexture?.(true)
 
   // A cutout drops the backdrop and the floor, leaving the device (and its
   // contact shadow, which composites nicely) on transparency.
@@ -119,7 +119,7 @@ export async function exportImage({ aspect = '16:9', size = 'M', transparent = f
   } finally {
     scene.background = prevBackground
     hidden.forEach((o) => (o.visible = true))
-    studioApi.setFastTexture?.(true)
+    studioApi.setSharpTexture?.(false)
     useStudio.getState().setExporting(null)
   }
 }
@@ -136,7 +136,7 @@ export async function exportVideo({
   draft = false,
   onProgress,
 } = {}) {
-  const { gl, camera, scene, canvas, applyAt, setFastTexture } = studioApi
+  const { gl, camera, scene, canvas, applyAt, setSharpTexture } = studioApi
   if (!gl || !applyAt) throw new Error('Scene is not ready yet.')
 
   const state = useStudio.getState()
@@ -153,13 +153,13 @@ export async function exportVideo({
   useStudio.getState().setPlaying(false)
   useStudio.getState().setExporting({ phase: 'preparing', progress: 0 })
   if (source?.kind === 'video') source.el.pause()
-  // Mipmapping is off in the preview for speed; a final render turns it on.
-  setFastTexture?.(draft)
+  // Mipmapping is off in the preview for speed; a real render turns it on.
+  setSharpTexture?.(!draft)
 
   return withRenderSize(width, height, async (restoreSize) => {
     const restore = () => {
       restoreSize()
-      setFastTexture?.(true) // back to the fast preview path
+      setSharpTexture?.(false) // back to the fast preview path
       useStudio.getState().setExporting(null)
       useStudio.getState().setPlayhead(prevPlayhead)
       if (wasPlaying) useStudio.getState().setPlaying(true)
