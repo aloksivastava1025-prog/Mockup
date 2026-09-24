@@ -69,6 +69,19 @@ simplification relies on.
 Recording restarts the footage from the top, so the take lines up with what
 the export renders.
 
+### Props
+
+A camera that climbs away from a device on an infinite plane has nothing to
+look at — the floor reads as a void and a wide or aerial framing feels like
+nowhere. `scene/Props.jsx` dresses the scene with a mat, mug, notepad, phone
+and plant, plus a window gobo thrown onto the floor, which sells "this is a
+room" far more cheaply than an actual window, wall and spotlight. Everything is
+sized against the device (0.34 world units across) and kept muted so it never
+competes with the screen.
+
+Locations that are meant to be *places* (Desk, Loft, Marble) switch props on;
+the abstract ones (Studio, Noir, Void) leave them off.
+
 ### Locations and surfaces
 
 A flat grey floor under a soft gradient is invisible — the device reads as

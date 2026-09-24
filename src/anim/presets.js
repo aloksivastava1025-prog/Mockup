@@ -182,40 +182,45 @@ const CONCRETE_LOOK = {
     groundVisible: true,
     surface: 'concrete',
     groundColor: '#b6afaf',
+    props: true,
   },
 }
 
 /**
- * One continuous 20s move: a closed lid revealed from a low angle, opening as
- * the camera rises, an orbit across the front, then closing again. No cuts —
- * it fades up at the start and out at the end, and never stops moving.
+ * A 37s piece that opens on a drone move: high and almost straight down on the
+ * closed machine, then descending and swinging around as it drops, levelling
+ * out low before the lid opens. One continuous move throughout — the only cuts
+ * are the fade up at the start and the fade out at the end.
  */
-const REVEAL_ORBIT_20 = () => [
-  // closed, low and far — fade up on it
-  shot(0,    { ry: -26, lid: 2,   az: 50,  el: 6,  d: 0.72, fov: 30, ty: 0.020, b: 0.5, g: 0 }, 1),
-  shot(1.6,  { ry: -26, lid: 2,   az: 47,  el: 7,  d: 0.66, fov: 30, ty: 0.022, b: 0.5, g: 0 }, 0),
-  // creep in while it is still shut
-  shot(5,    { ry: -24, lid: 4,   az: 42,  el: 9,  d: 0.58, fov: 29, ty: 0.030, b: 0.6, g: 0.05 }, 0),
-  // the open, camera rising with the lid
-  shot(8.5,  { ry: -21, lid: 104, az: 34,  el: 20, d: 0.78, fov: 30, ty: 0.100, b: 1.0, g: 0.35 }, 0),
-  // push in, narrowing the lens as it goes
-  shot(11.5, { ry: -12, lid: 104, az: 12,  el: 22, d: 0.70, fov: 27, ty: 0.115 }, 0),
-  // tight on the screen — the zoom beat
-  shot(14,   { ry: -4,  lid: 104, az: -6,  el: 18, d: 0.62, fov: 26, ty: 0.118, zoom: 1.04 }, 0),
-  // release: pull back and carry the orbit left
-  shot(16.8, { ry: 6,   lid: 104, az: -26, el: 22, d: 0.78, fov: 30, ty: 0.112 }, 0),
-  // close it again
-  shot(18.6, { ry: 12,  lid: 58,  az: -18, el: 24, d: 0.88, fov: 32, ty: 0.080, b: 0.8, g: 0.15 }, 0),
-  shot(20,   { ry: 14,  lid: 2,   az: -12, el: 22, d: 0.95, fov: 32, ty: 0.040, b: 0.5, g: 0 }, 1),
+const DRONE_REVEAL = () => [
+  // --- drone: high, looking down, closed ---
+  shot(0,    { ry: -20, lid: 2,   az: 20,  el: 78, d: 2.30, fov: 42, ty: 0.020, b: 0.5, g: 0 }, 1),
+  shot(2.5,  { ry: -22, lid: 2,   az: 30,  el: 72, d: 2.00, fov: 42, ty: 0.020, b: 0.5, g: 0 }, 0),
+  shot(6,    { ry: -26, lid: 2,   az: 46,  el: 58, d: 1.55, fov: 40, ty: 0.020, b: 0.5, g: 0 }, 0),
+  shot(10,   { ry: -28, lid: 2,   az: 58,  el: 38, d: 1.05, fov: 36, ty: 0.025, b: 0.5, g: 0 }, 0),
+  // --- levels out low, still shut ---
+  shot(13.5, { ry: -26, lid: 3,   az: 52,  el: 16, d: 0.72, fov: 31, ty: 0.030, b: 0.55, g: 0.03 }, 0),
+  // --- the open ---
+  shot(17,   { ry: -24, lid: 40,  az: 46,  el: 13, d: 0.64, fov: 30, ty: 0.045, b: 0.7, g: 0.12 }, 0),
+  shot(20,   { ry: -21, lid: 104, az: 36,  el: 20, d: 0.80, fov: 30, ty: 0.100, b: 1.0, g: 0.35 }, 0),
+  // --- push in, narrowing the lens ---
+  shot(24,   { ry: -12, lid: 104, az: 14,  el: 22, d: 0.70, fov: 27, ty: 0.115 }, 0),
+  shot(27.5, { ry: -4,  lid: 104, az: -4,  el: 18, d: 0.62, fov: 26, ty: 0.118, zoom: 1.04 }, 0),
+  // --- release into the orbit ---
+  shot(31,   { ry: 4,   lid: 104, az: -20, el: 22, d: 0.76, fov: 30, ty: 0.112 }, 0),
+  shot(33.5, { ry: 10,  lid: 104, az: -30, el: 24, d: 0.86, fov: 31, ty: 0.110 }, 0),
+  // --- close it, pull away ---
+  shot(35.5, { ry: 13,  lid: 50,  az: -24, el: 25, d: 0.92, fov: 32, ty: 0.075, b: 0.8, g: 0.15 }, 0),
+  shot(37,   { ry: 14,  lid: 2,   az: -18, el: 24, d: 1.00, fov: 32, ty: 0.045, b: 0.5, g: 0 }, 1),
 ]
 
 export const PRESETS = [
   {
-    id: 'reveal20',
-    label: 'Reveal + orbit 20s',
-    duration: 20,
+    id: 'drone',
+    label: 'Drone reveal 37s',
+    duration: 37,
     look: CONCRETE_LOOK,
-    build: () => REVEAL_ORBIT_20(),
+    build: () => DRONE_REVEAL(),
   },
   {
     id: 'scroll',

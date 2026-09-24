@@ -8,6 +8,7 @@ import { sampleAt } from '../anim/interpolate.js'
 import { createScreenSource } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
 import { SURFACES, surfaceTexture } from './surfaces.js'
+import Props from './Props.jsx'
 
 const DEG = Math.PI / 180
 
@@ -141,7 +142,9 @@ function Ground() {
   const { groundVisible } = background
   const kind = background.surface ?? 'studio'
   const surface = SURFACES[kind] ?? SURFACES.studio
-  const GROUND = 24
+  // Big enough that a high aerial never catches the plane's edge. The texture
+  // repeat scales with it, so tile size on the floor stays constant.
+  const GROUND = 60
   const map = useMemo(() => surfaceTexture(kind, GROUND), [kind])
 
   // Contact shadows cost a full extra scene render per frame. While a video
@@ -246,6 +249,7 @@ function Rig() {
 
   const device = DEVICES[deviceId] ?? DEVICES.laptop
   const adaptScreen = useStudio((s) => s.adaptScreen)
+  const background = useStudio((s) => s.background)
 
   // With Adapt on the display takes the source's aspect ratio, stretched along
   // the display's height axis. Clamped, because some pairings are nonsense: a
@@ -478,6 +482,7 @@ function Rig() {
     <>
       <Lights />
       <Ground />
+      <Props visible={!!background.props} />
       <FadeOverlay meshRef={fadeMeshRef} matRef={fadeMatRef} />
       <DeviceComponent
         rootRef={rootRef}

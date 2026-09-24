@@ -60,6 +60,7 @@ const defaults = {
     color: '#d6d6d6',
     groundVisible: true,
     surface: 'studio', // see scene/surfaces.js
+    props: false, // desk dressing; gives wide and aerial framings a sense of place
     groundColor: '#d4d4d4',
   },
 }

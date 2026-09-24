@@ -108,6 +108,7 @@ export default function RightPanel() {
           </div>
         </div>
         <p className="hint">Sets the surface, backdrop and light together. Tune any of them below.</p>
+        <Toggle label="Props" value={!!background.props} onChange={(v) => update('background', { props: v })} />
         <Toggle label="Floor" value={background.groundVisible} onChange={(v) => update('background', { groundVisible: v })} />
         {background.groundVisible && (
           <Segmented
