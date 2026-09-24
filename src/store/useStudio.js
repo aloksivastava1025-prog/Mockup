@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { samplesToKeyframes } from '../anim/record.js'
 
 // Groups listed here are the ones a keyframe snapshots and the animator interpolates.
 export const ANIMATED_GROUPS = ['device', 'camera', 'screen', 'post']
@@ -177,6 +178,41 @@ export const useStudio = create((set, get) => ({
       if (!kf) return {}
       return { ...clone(kf.state), playhead: kf.time, previewLive: true }
     }),
+
+  // ---- live recording ----
+  // Capture a performance instead of placing keyframes by hand: everything you
+  // touch while this runs is sampled, then reduced to a keyframe track.
+  // `samples` is mutated in place by the render loop rather than going through
+  // setState, which would re-render the whole editor 30 times a second.
+  recording: null, // { startedAt, samples: [] }
+  startRecording: () =>
+    set((s) => ({
+      ...historyPatch(s, null),
+      recording: { startedAt: performance.now(), samples: [] },
+      keyframes: [],
+      playhead: 0,
+      isPlaying: false,
+      previewLive: true,
+    })),
+  stopRecording: () => {
+    const rec = get().recording
+    if (!rec) return 0
+    const samples = rec.samples
+    const length = samples.length ? samples[samples.length - 1].time : 0
+    if (samples.length < 2) {
+      set({ recording: null })
+      return 0
+    }
+    const keyframes = samplesToKeyframes(samples)
+    set({
+      recording: null,
+      keyframes,
+      duration: Math.max(0.5, +length.toFixed(2)),
+      playhead: 0,
+      previewLive: false,
+    })
+    return keyframes.length
+  },
 
   // ---- export ----
   exporting: null, // { progress, phase } | null

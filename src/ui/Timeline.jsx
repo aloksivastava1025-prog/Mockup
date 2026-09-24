@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { PRESETS, applyPreset } from '../anim/presets.js'
 
@@ -17,6 +17,35 @@ export default function Timeline() {
   const removeKeyframe = useStudio((s) => s.removeKeyframe)
   const clearKeyframes = useStudio((s) => s.clearKeyframes)
   const applyKeyframe = useStudio((s) => s.applyKeyframe)
+  const recording = useStudio((s) => s.recording)
+  const startRecording = useStudio((s) => s.startRecording)
+  const stopRecording = useStudio((s) => s.stopRecording)
+  const [recSeconds, setRecSeconds] = useState(0)
+  const [recResult, setRecResult] = useState(null)
+
+  // Elapsed readout. The samples themselves are collected by the render loop.
+  useEffect(() => {
+    if (!recording) return
+    const id = setInterval(() => setRecSeconds((performance.now() - recording.startedAt) / 1000), 100)
+    return () => clearInterval(id)
+  }, [recording])
+
+  const toggleRecord = () => {
+    if (recording) {
+      const n = stopRecording()
+      setRecResult(n ? `${n} keyframes captured` : 'Take was too short')
+      return
+    }
+    setRecResult(null)
+    setRecSeconds(0)
+    // Start the footage from the top so the take lines up with what exports.
+    const src = useStudio.getState().source
+    if (src?.kind === 'video') {
+      src.el.currentTime = 0
+      src.el.play().catch(() => {})
+    }
+    startRecording()
+  }
 
   const scrub = (e) => {
     const rect = trackRef.current.getBoundingClientRect()
@@ -25,6 +54,12 @@ export default function Timeline() {
     setPlayhead(pct * duration)
   }
 
+  // A recorded take can hold hundreds of keyframes; drawing a diamond for each
+  // would bury the track. Thin them out for display only.
+  const MAX_MARKERS = 120
+  const stride = Math.ceil(keyframes.length / MAX_MARKERS)
+  const markers = stride > 1 ? keyframes.filter((_, i) => i % stride === 0) : keyframes
+
   const ticks = []
   const step = duration <= 4 ? 0.5 : duration <= 12 ? 1 : duration <= 30 ? 2 : duration <= 90 ? 10 : 15
   for (let t = 0; t <= duration + 1e-6; t += step) ticks.push(+t.toFixed(2))
@@ -32,7 +67,10 @@ export default function Timeline() {
   return (
     <div className="timeline">
       <div className="row">
-        <button className="btn" onClick={() => setPlaying(!isPlaying)}>
+        <button className={`btn ${recording ? 'danger' : ''}`} onClick={toggleRecord} title="Record a live take">
+          {recording ? `■ Stop ${recSeconds.toFixed(1)}s` : '● Record'}
+        </button>
+        <button className="btn" disabled={!!recording} onClick={() => setPlaying(!isPlaying)}>
           {isPlaying ? '❚❚ Pause' : '▶ Play'}
         </button>
         <button className="btn" onClick={() => { setPlaying(false); setPlayhead(0) }}>
@@ -90,7 +128,7 @@ export default function Timeline() {
             </div>
           ))}
         </div>
-        {keyframes.map((k) => (
+        {markers.map((k) => (
           <div
             key={k.id}
             className={`kf ${selected === k.id ? 'sel' : ''}`}
@@ -107,8 +145,16 @@ export default function Timeline() {
       </div>
 
       <p className="hint">
-        Pose the scene, then hit <span className="kbd">+ Keyframe</span> to pin it at the playhead. Two or more
-        keyframes animate; everything between them is eased automatically.
+        {recording ? (
+          'Recording — orbit the camera, open the lid, drag any control. It is all captured.'
+        ) : recResult ? (
+          `${recResult} — press Play to watch it back.`
+        ) : (
+          <>
+            Hit <span className="kbd">● Record</span> and perform the shot, or pose the scene and press{' '}
+            <span className="kbd">+ Keyframe</span> to place one by hand.
+          </>
+        )}
       </p>
     </div>
   )

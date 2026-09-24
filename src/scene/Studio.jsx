@@ -364,10 +364,43 @@ function Rig() {
     return unsub
   }, [camera, invalidate])
 
+  // Snapshot of what is on screen right now. The camera is read from the live
+  // object rather than the store so a mouse orbit is captured smoothly, not
+  // only at the points where the controls happen to write back.
+  const liveSnapshot = () => {
+    const s = useStudio.getState()
+    const t = controlsRef.current?.target
+    const r4 = (n) => +n.toFixed(4)
+    return {
+      device: JSON.parse(JSON.stringify(s.device)),
+      camera: {
+        position: [r4(camera.position.x), r4(camera.position.y), r4(camera.position.z)],
+        target: t ? [r4(t.x), r4(t.y), r4(t.z)] : [...s.camera.target],
+        fov: camera.fov,
+      },
+      screen: JSON.parse(JSON.stringify(s.screen)),
+      post: JSON.parse(JSON.stringify(s.post)),
+    }
+  }
+
   useFrame((_, delta) => {
     const s = useStudio.getState()
     const exporting = !!s.exporting
     if (exporting) return // the exporter drives applyAt + render itself
+
+    // ---- live recording ----
+    const rec = s.recording
+    if (rec) {
+      const t = (performance.now() - rec.startedAt) / 1000
+      const n = rec.samples.length
+      if (!n || t - rec.samples[n - 1].time >= 1 / 30) rec.samples.push({ time: t, state: liveSnapshot() })
+      // The user is driving; just show the live pose and keep the readout moving.
+      applyAt(t, { animated: false, driveCamera: false })
+      if (Math.abs(s.playhead - t) > 0.05) useStudio.setState({ playhead: t })
+      const rv = source?.kind === 'video' ? source.el : null
+      if (rv && rv.paused) rv.play().catch(() => {})
+      return
+    }
 
     const hasAnim = s.keyframes.length >= 2
     const v = source?.kind === 'video' ? source.el : null

@@ -41,6 +41,21 @@ session*. `Ctrl+Z` / `Ctrl+Shift+Z` undo and redo.
 - **Export** — renders the timeline frame by frame at the chosen resolution and
   frame rate, so the output is frame-accurate regardless of viewport performance.
 
+### Recording a take
+
+Instead of placing keyframes by hand, press **● Record** and perform the shot:
+orbit the camera, open the lid, drag any control. Everything is sampled at
+~30Hz and, on Stop, reduced to a keyframe track you can then play back, edit
+and export like any other.
+
+The reduction matters — a 20 second take sampled raw would be 600 keyframes,
+nearly all redundant, since while you drag one control nothing else moves.
+`anim/record.js` keeps a sample only when a field has changed by more than its
+own perceptual tolerance (a millimetre of camera travel, a third of a degree
+of rotation) or half a second has passed, which collapses a take to a handful
+of points. Recording also restarts the footage from the top, so the take lines
+up with what the export renders.
+
 ### Adapt
 
 On by default, in the Screen panel. The display takes the footage's aspect
