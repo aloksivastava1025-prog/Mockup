@@ -48,13 +48,26 @@ orbit the camera, open the lid, drag any control. Everything is sampled at
 ~30Hz and, on Stop, reduced to a keyframe track you can then play back, edit
 and export like any other.
 
-The reduction matters — a 20 second take sampled raw would be 600 keyframes,
-nearly all redundant, since while you drag one control nothing else moves.
-`anim/record.js` keeps a sample only when a field has changed by more than its
-own perceptual tolerance (a millimetre of camera travel, a third of a degree
-of rotation) or half a second has passed, which collapses a take to a handful
-of points. Recording also restarts the footage from the top, so the take lines
-up with what the export renders.
+The reduction is the whole game. Comparing each sample to the one before it
+only removes stillness — it cannot touch movement, so a smooth ten second
+orbit survives as three hundred keyframes that nobody can edit. `anim/record.js`
+instead asks whether a sample could be recovered by interpolating across it,
+and drops it if so: Ramer–Douglas–Peucker generalised from a 2D polyline to
+every animated field at once, with error measured as a multiple of each
+field's own perceptual tolerance.
+
+A realistic 35 second take is 1051 raw samples. Neighbour comparison leaves
+449 of them; this leaves **17**, and reconstruction stays inside one tolerance
+of what was performed (`npm test` checks both).
+
+Recorded segments interpolate **linearly**, unlike hand-placed keyframes. The
+operator's acceleration is already in the samples, so easing them again would
+stop the motion dead at every keyframe — measured at 15x the visible error
+threshold — and it would also invalidate the linear prediction the
+simplification relies on.
+
+Recording restarts the footage from the top, so the take lines up with what
+the export renders.
 
 ### Adapt
 
@@ -124,6 +137,16 @@ final pass, where sharpness is what matters and throughput is not.
 If the viewport feels slow, check how many other WebGL pages are open: several
 live contexts on one GPU slow each other down badly.
 
+## Tests
+
+```bash
+npm test
+```
+
+Covers the recording reduction: that a take comes out small enough to edit,
+that it still reconstructs what was performed, that the quality knob trades
+the two monotonically, and that easing a recorded take visibly distorts it.
+
 ## Layout
 
 ```
@@ -131,7 +154,8 @@ src/
   scene/Studio.jsx      Canvas, lighting, floor, the rig that drives everything
   scene/studioApi.js    bridge from the R3F scene to the exporter
   devices/              device registry + the laptop model
-  anim/interpolate.js   keyframe sampling
+  anim/interpolate.js   keyframe sampling (eased, or linear for takes)
+  anim/record.js        live capture -> simplified keyframe track
   anim/presets.js       one-click animation presets
   export/exportVideo.js WebCodecs → MP4, MediaRecorder fallback
   store/useStudio.js    all editor state

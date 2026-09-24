@@ -2,12 +2,12 @@ import { ANIMATED_GROUPS } from '../store/useStudio.js'
 
 const smoothstep = (t) => t * t * (3 - 2 * t)
 
-function blend(a, b, t) {
+export function lerpStates(a, b, t) {
   if (typeof a === 'number' && typeof b === 'number') return a + (b - a) * t
-  if (Array.isArray(a) && Array.isArray(b)) return a.map((v, i) => blend(v, b[i] ?? v, t))
+  if (Array.isArray(a) && Array.isArray(b)) return a.map((v, i) => lerpStates(v, b[i] ?? v, t))
   if (a && typeof a === 'object' && b && typeof b === 'object') {
     const out = {}
-    for (const k of Object.keys(a)) out[k] = blend(a[k], b[k], t)
+    for (const k of Object.keys(a)) out[k] = lerpStates(a[k], b[k], t)
     return out
   }
   // strings, booleans and anything else snap at the midpoint of the segment
@@ -30,9 +30,13 @@ export function sampleAt(keyframes, time, live) {
   const a = keyframes[i]
   const b = keyframes[i + 1]
   const span = b.time - a.time
-  const t = span <= 1e-6 ? 0 : smoothstep((time - a.time) / span)
+  const u = span <= 1e-6 ? 0 : (time - a.time) / span
+  // Hand-placed keyframes ease between poses. A recorded take already contains
+  // the operator's own acceleration, so easing it again would flatten the
+  // motion to a stop at every keyframe — those segments interpolate linearly.
+  const t = a.ease === 'linear' ? u : smoothstep(u)
 
   const out = {}
-  for (const g of ANIMATED_GROUPS) out[g] = blend(a.state[g], b.state[g], t)
+  for (const g of ANIMATED_GROUPS) out[g] = lerpStates(a.state[g], b.state[g], t)
   return out
 }
