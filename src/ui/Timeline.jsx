@@ -26,8 +26,8 @@ export default function Timeline() {
   }
 
   const ticks = []
-  const step = duration <= 4 ? 0.5 : duration <= 12 ? 1 : 2
-  for (let t = 0; t <= duration + 1e-6; t += step) ticks.push(t)
+  const step = duration <= 4 ? 0.5 : duration <= 12 ? 1 : duration <= 30 ? 2 : duration <= 90 ? 10 : 15
+  for (let t = 0; t <= duration + 1e-6; t += step) ticks.push(+t.toFixed(2))
 
   return (
     <div className="timeline">
@@ -71,7 +71,7 @@ export default function Timeline() {
           <input
             type="number"
             min={0.5}
-            max={60}
+            max={300}
             step={0.5}
             value={duration}
             style={{ width: 66 }}

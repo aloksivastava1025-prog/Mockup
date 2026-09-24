@@ -173,6 +173,7 @@ function Rig() {
   const previewLive = useStudio((s) => s.previewLive)
   const hasAnimation = useStudio((s) => s.keyframes.length >= 2)
   const draggingRef = useRef(false)
+  const lastFrameTime = useRef(-1)
 
   // The timeline owns the camera during playback and while scrubbing a
   // keyframed animation; orbit controls must stand down or they fight it.
@@ -280,6 +281,12 @@ function Rig() {
         if (!v.paused) v.pause()
         const want = s.playhead % v.duration
         if (Math.abs(v.currentTime - want) > 0.08) v.currentTime = want
+        // A paused element fires no frame callbacks, so a seeked frame is never
+        // uploaded on its own — push it to the GPU once per landed seek.
+        if (texture && !v.seeking && v.currentTime !== lastFrameTime.current) {
+          lastFrameTime.current = v.currentTime
+          texture.needsUpdate = true
+        }
       }
     }
   })

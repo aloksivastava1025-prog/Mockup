@@ -13,13 +13,14 @@ export default function RightPanel() {
 
   const [fps, setFps] = useState(30)
   const [resolution, setResolution] = useState('1080p')
+  const [bitrateMbps, setBitrateMbps] = useState(8)
   const [error, setError] = useState(null)
   const [lastMode, setLastMode] = useState(null)
 
   const runExport = async () => {
     setError(null)
     try {
-      const { blob, filename, mode } = await exportVideo({ fps, resolution })
+      const { blob, filename, mode } = await exportVideo({ fps, resolution, bitrateMbps })
       setLastMode(mode)
       downloadBlob(blob, filename)
     } catch (e) {
@@ -104,6 +105,16 @@ export default function RightPanel() {
             { value: 60, label: '60' },
           ]}
           onChange={setFps}
+        />
+        <Segmented
+          label="Quality"
+          value={bitrateMbps}
+          options={[
+            { value: 8, label: 'Standard' },
+            { value: 14, label: 'High' },
+            { value: 24, label: 'Max' },
+          ]}
+          onChange={setBitrateMbps}
         />
         <button className="btn primary" disabled={!!exporting || !hasVideo} onClick={runExport}>
           {exporting ? `${exporting.phase}… ${Math.round(exporting.progress * 100)}%` : 'Export video'}
