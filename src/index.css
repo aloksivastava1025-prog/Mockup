@@ -296,6 +296,40 @@ select:focus {
   margin-top: 4px;
 }
 
+/* keyframe popover — edit without leaving the track */
+.kf-pop {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 4px;
+  white-space: nowrap;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  cursor: default;
+}
+.kf-pop input[type='number'] { width: 52px; height: 20px; font-size: 11px; }
+.kf-pop .unit { font-size: 10px; color: var(--muted); margin-right: 2px; }
+.kf-pop button {
+  border: none;
+  background: var(--field-hover);
+  border-radius: 3px;
+  height: 20px;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 10.5px;
+  color: var(--text);
+  cursor: pointer;
+}
+.kf-pop button:hover { background: #e6e6e6; }
+.kf-pop button.danger { color: var(--danger); }
+
 /* ---------- effects stack ---------- */
 .fx-row { display: flex; align-items: center; gap: 4px; }
 .fx-row.muted { opacity: 0.45; }
@@ -612,18 +646,30 @@ select:focus {
 .track .ticks { position: absolute; inset: 0; pointer-events: none; }
 .track .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: #ececec; }
 .track .tick span { position: absolute; top: 3px; left: 4px; font-size: 9.5px; color: var(--muted); }
+/* The marker is an unrotated box with the diamond drawn inside it. The whole
+   thing used to be rotate(45deg), which tilted the popover with it — and the
+   box doubles as a hit target, which at 9px was a hard thing to grab. */
 .kf {
   position: absolute;
   top: 50%;
-  width: 9px;
-  height: 9px;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  touch-action: none;
+}
+.kf::before {
+  content: '';
+  position: absolute;
+  inset: 4.5px;
   background: var(--text);
   border: 1px solid #fff;
   border-radius: 1px;
-  transform: translate(-50%, -50%) rotate(45deg);
+  transform: rotate(45deg);
 }
-.kf:hover { background: var(--accent); }
-.kf.sel { background: var(--accent); box-shadow: 0 0 0 2px rgba(13, 153, 255, 0.25); }
+.kf:active { cursor: grabbing; }
+.kf:hover::before { background: var(--accent); }
+.kf.sel::before { background: var(--accent); box-shadow: 0 0 0 2px rgba(13, 153, 255, 0.25); }
 .playhead { position: absolute; top: -3px; bottom: -3px; width: 1.5px; background: var(--accent); pointer-events: none; }
 .playhead::after {
   content: '';

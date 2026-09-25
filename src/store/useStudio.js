@@ -440,10 +440,33 @@ export const useStudio = create((set, get) => ({
       const t = Math.min(s.duration, Math.max(0, time ?? s.playhead))
       const state = Object.fromEntries(ANIMATED_GROUPS.map((g) => [g, clone(s[g])]))
       const rest = s.keyframes.filter((k) => Math.abs(k.time - t) > 1e-3)
-      const next = [...rest, { id: `kf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, time: t, state }]
+      const next = [...rest, { id: newId('kf'), time: t, state }]
       next.sort((a, b) => a.time - b.time)
       return { ...hist, keyframes: next }
     }),
+  /**
+   * Retime a keyframe. Coalesced under one history key so a whole drag is one
+   * undo step rather than one per pixel, the same way a slider drag is.
+   */
+  moveKeyframe: (id, time) =>
+    set((s) => {
+      const t = Math.min(s.duration, Math.max(0, time))
+      const next = s.keyframes
+        .map((k) => (k.id === id ? { ...k, time: +t.toFixed(3) } : k))
+        .sort((a, b) => a.time - b.time)
+      return { ...historyPatch(s, `kf.move.${id}`), keyframes: next, playhead: t, previewLive: false }
+    }),
+
+  /** Re-record a keyframe from whatever the scene looks like now. */
+  restampKeyframe: (id) =>
+    set((s) => {
+      const state = Object.fromEntries(ANIMATED_GROUPS.map((g) => [g, clone(s[g])]))
+      return {
+        ...historyPatch(s, null),
+        keyframes: s.keyframes.map((k) => (k.id === id ? { ...k, state } : k)),
+      }
+    }),
+
   removeKeyframe: (id) =>
     set((s) => ({ ...historyPatch(s, null), keyframes: s.keyframes.filter((k) => k.id !== id) })),
   clearKeyframes: () => set((s) => ({ ...historyPatch(s, null), keyframes: [] })),
