@@ -47,8 +47,10 @@ export const tabletMeta = {
   width: W * UNIT,
   screenAspect: SCREEN_W / SCREEN_H,
   hasLid: false,
-  // A tablet pushed much past these stops reading as a tablet.
-  adaptRange: [0.75, 1.35],
+  // A tablet pushed much past these stops reading as a tablet. The lower stop
+  // was 0.75, which refused ordinary 16:9 footage by 0.01 — an 1868x992 grab
+  // wants 0.740 — and then silently letterboxed it. The shape holds fine here.
+  adaptRange: [0.66, 1.35],
   frame: { d: 0.62, ty: 0.09, fov: 30 },
 }
 

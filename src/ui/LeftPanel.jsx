@@ -1,6 +1,7 @@
 import React from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { DEVICE_LIST, COMING_SOON, DEVICES } from '../devices/index.js'
+import { adaptFor } from '../devices/adapt.js'
 import { Panel, Segmented, Slider, Toggle, Vec3 } from './controls.jsx'
 import FocusPanel from './FocusPanel.jsx'
 import TitlesPanel from './TitlesPanel.jsx'
@@ -34,6 +35,7 @@ export default function LeftPanel({ onCollapse }) {
   const adaptScreen = useStudio((s) => s.adaptScreen)
   const setAdaptScreen = useStudio((s) => s.setAdaptScreen)
   const source = useStudio((s) => s.source)
+  const adapt = adaptFor(deviceId, source, adaptScreen)
   const autoplay = useStudio((s) => s.autoplay)
   const setAutoplay = useStudio((s) => s.setAutoplay)
   const companions = useStudio((s) => s.companions)
@@ -208,11 +210,19 @@ export default function LeftPanel({ onCollapse }) {
           </>
         )}
         <p className="hint">
-          {adaptScreen
+          {!adaptScreen
+            ? 'Using the real device aspect. Fit decides how the footage sits inside it.'
+            : adapt.reason === 'no-source'
+            ? 'Display will reshape to your footage once you add some.'
+            : adapt.applies
             ? 'Display reshaped to your footage — fills it exactly, no crop or bars.'
-            : 'Using the real device aspect. Fit decides how the footage sits inside it.'}
+            : `Your footage is ${adapt.reason === 'too-wide' ? 'wider' : 'taller'} than this ${
+                DEVICES[deviceId]?.label ?? 'device'
+              } can be stretched to (${adapt.wanted.toFixed(2)}, limit ${
+                adapt.reason === 'too-wide' ? adapt.lo : adapt.hi
+              }), so the real shape is kept and Fit decides the rest. Try another device, or set Fit to Cover to lose the bars.`}
         </p>
-        {!adaptScreen && (
+        {(!adaptScreen || !adapt.applies) && (
         <Segmented
           label="Fit"
           value={screen.fit}
