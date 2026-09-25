@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
-import { Slider } from './controls.jsx'
+import { Segmented, Slider } from './controls.jsx'
 import { MOVES, MOVE_GROUPS, buildMove } from '../anim/cameraMoves.js'
 
 /**
@@ -19,9 +19,10 @@ export default function CameraMoves() {
   const [open, setOpen] = useState(null)
   const [seconds, setSeconds] = useState(4)
   const [amount, setAmount] = useState(1)
+  const [dir, setDir] = useState(1)
 
   const add = (id) => {
-    const keys = buildMove(id, useStudio.getState(), { seconds, amount, startTime: playhead })
+    const keys = buildMove(id, useStudio.getState(), { seconds, amount, startTime: playhead, dir })
     if (keys) addCameraMove(keys)
   }
 
@@ -29,8 +30,19 @@ export default function CameraMoves() {
     <>
       <Slider label="Move length" value={seconds} min={0.4} max={12} step={0.1} precision={1} unit="s" onChange={setSeconds} />
       <Slider label="Move size" value={amount} min={0.2} max={2.5} step={0.05} precision={2} onChange={setAmount} />
+      <Segmented
+        label="Direction"
+        value={String(dir)}
+        options={[
+          { value: '-1', label: '◀ Left' },
+          { value: '1', label: 'Right ▶' },
+        ]}
+        onChange={(v) => setDir(Number(v))}
+      />
       <p className="hint">
         Moves start from the framing you have now and are written onto the timeline at the playhead.
+        Direction mirrors the sideways ones — an orbit, an arc, a truck. It does nothing to a dolly
+        or a crane, where the opposite already has its own name.
       </p>
       <div className="fx-menu" style={{ position: 'static', boxShadow: 'none' }}>
         {MOVE_GROUPS.map((g) => {

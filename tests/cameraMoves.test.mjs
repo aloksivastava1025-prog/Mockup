@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { MOVES, orbitOf } from '../src/anim/cameraMoves.js'
+import { MOVES, buildMove, orbitOf } from '../src/anim/cameraMoves.js'
 
 const DEG = Math.PI / 180
 
@@ -47,5 +47,47 @@ for (const [id, m] of Object.entries(MOVES)) {
 const whip = MOVES.whipPan.keys.filter((k) => k.az === 95)
 assert.equal(whip.length, 2, 'the whip should hold its far angle for a beat')
 
-console.log(`${Object.keys(MOVES).length} moves, orbit round-trip exact to 1e-6`)
+/**
+ * Left and right have to be genuine mirrors of each other, not two moves that
+ * happen to both turn. A camera one way and the same camera the other way must
+ * sit the same distance out, at the same height, the same angle either side of
+ * where it started.
+ */
+const state = {
+  camera: { position: [0, 0.3, 0.9], target: [0, 0.12, 0], fov: 35 },
+  device: {},
+  screen: {},
+  post: {},
+}
+const start = orbitOf(state.camera.position, state.camera.target)
+for (const id of ['orbit', 'arc', 'pushOrbit', 'pullOrbit', 'truck']) {
+  const right = buildMove(id, state, { dir: 1 })
+  const left = buildMove(id, state, { dir: -1 })
+  for (let i = 0; i < right.length; i++) {
+    const r = orbitOf(right[i].state.camera.position, right[i].state.camera.target)
+    const l = orbitOf(left[i].state.camera.position, left[i].state.camera.target)
+    assert.ok(Math.abs(r.d - l.d) < 1e-3, `${id} key ${i}: same distance either way`)
+    assert.ok(Math.abs(r.el - l.el) < 1e-3, `${id} key ${i}: same height either way`)
+    const swungRight = r.az - start.az
+    const swungLeft = l.az - start.az
+    assert.ok(
+      Math.abs(swungRight + swungLeft) < 1e-2,
+      `${id} key ${i}: swings should be equal and opposite, got ${swungRight} and ${swungLeft}`,
+    )
+  }
+}
+
+// Vertical and depth moves are not mirrored — the opposite of a crane up is a
+// crane down, which is its own entry in the library.
+for (const id of ['craneUp', 'dollyIn']) {
+  const a = buildMove(id, state, { dir: 1 })
+  const b = buildMove(id, state, { dir: -1 })
+  assert.deepEqual(
+    a.map((k) => k.state.camera.position),
+    b.map((k) => k.state.camera.position),
+    `${id} should ignore direction`,
+  )
+}
+
+console.log(`${Object.keys(MOVES).length} moves, orbit round-trip exact to 1e-6, left/right mirror`)
 console.log('ok')

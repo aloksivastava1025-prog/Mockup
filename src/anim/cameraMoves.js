@@ -54,7 +54,7 @@ export const MOVES = {
     keys: [{ u: 0 }, { u: 0.5, az: 30, el: 9 }, { u: 1, az: 62, el: 5 }],
   },
   pushOrbit: { label: 'Push + orbit', group: 'around', keys: [{ u: 0 }, { u: 1, az: 45, d: 0.65 }] },
-  pullOrbit: { label: 'Pull + orbit', group: 'around', keys: [{ u: 0 }, { u: 1, az: -50, d: 1.6 }] },
+  pullOrbit: { label: 'Pull + orbit', group: 'around', keys: [{ u: 0 }, { u: 1, az: 50, d: 1.6 }] },
   whipPan: {
     label: 'Whip pan',
     group: 'around',
@@ -68,8 +68,9 @@ export const MOVES = {
   pedestalUp: { label: 'Pedestal up', group: 'lift', keys: [{ u: 0 }, { u: 1, lift: 0.14 }] },
   pedestalDown: { label: 'Pedestal down', group: 'lift', keys: [{ u: 0 }, { u: 1, lift: -0.1 }] },
 
-  truckLeft: { label: 'Truck left', group: 'across', keys: [{ u: 0 }, { u: 1, pan: -0.22 }] },
-  truckRight: { label: 'Truck right', group: 'across', keys: [{ u: 0 }, { u: 1, pan: 0.22 }] },
+  // One truck, not a left and a right: the direction control already decides
+  // the side, and a move called "Truck left" set to go right is a lie.
+  truck: { label: 'Truck', group: 'across', keys: [{ u: 0 }, { u: 1, pan: 0.22 }] },
   parallax: {
     label: 'Parallax',
     group: 'across',
@@ -100,9 +101,22 @@ const lerp = (a, b, t) => a + (b - a) * t
  * the device registry and its .jsx behind it, which the test runner cannot
  * load — a mistake already made once in this codebase.
  */
-export function buildMove(id, state, { seconds = 4, amount = 1, startTime = 0 } = {}) {
+export function buildMove(id, state, { seconds = 4, amount = 1, startTime = 0, dir = 1 } = {}) {
   const move = MOVES[id]
   if (!move) return null
+
+  /**
+   * `dir` mirrors the move left/right.
+   *
+   * Only the sideways deltas flip. Mirroring a crane or a dolly would turn an
+   * up into a down and an in into an out, which is a different move with its
+   * own name, not the same one the other way round.
+   *
+   * Positive is the camera's own right: position is target + d·[sin(az), …,
+   * cos(az)], so a bigger az walks the camera toward +x, and for a camera
+   * looking down -z its right vector is +x.
+   */
+  const side = dir < 0 ? -1 : 1
 
   const s = state
   const base = orbitOf(s.camera.position, s.camera.target)
@@ -113,12 +127,12 @@ export function buildMove(id, state, { seconds = 4, amount = 1, startTime = 0 } 
   const right = [Math.cos(base.az * DEG), 0, -Math.sin(base.az * DEG)]
 
   return move.keys.map((k) => {
-    const az = (base.az + (k.az ?? 0) * amount) * DEG
+    const az = (base.az + (k.az ?? 0) * amount * side) * DEG
     const el = (base.el + (k.el ?? 0) * amount) * DEG
     const d = base.d * (1 + ((k.d ?? 1) - 1) * amount)
-    const pan = (k.pan ?? 0) * amount
+    const pan = (k.pan ?? 0) * amount * side
     const lift = (k.lift ?? 0) * amount
-    const slide = (k.slide ?? 0) * amount
+    const slide = (k.slide ?? 0) * amount * side
 
     const target = [tgt[0] + right[0] * pan, tgt[1] + lift, tgt[2] + right[2] * pan]
     const position = [
