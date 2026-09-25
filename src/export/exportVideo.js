@@ -44,6 +44,30 @@ function seek(video, time) {
 
 const supportsWebCodecs = () => typeof window !== 'undefined' && 'VideoEncoder' in window
 
+/**
+ * The AVC level has to match the frame size.
+ *
+ * `avc1.640028` is High@L4.0, which tops out at 8192 macroblocks: 1920x1080
+ * fits with 32 to spare, 2560x1440 does not. Configure it anyway and the
+ * encoder does not refuse up front — it errors asynchronously and every
+ * subsequent encode() throws on a closed codec, so the whole Large export
+ * dies a few frames in. Walk up the levels and take the first this browser
+ * will actually configure.
+ */
+const AVC_CODECS = ['avc1.640028', 'avc1.640032', 'avc1.640033', 'avc1.640034']
+
+async function pickAvcCodec(config) {
+  for (const codec of AVC_CODECS) {
+    try {
+      const { supported } = await VideoEncoder.isConfigSupported({ ...config, codec })
+      if (supported) return codec
+    } catch {
+      // Malformed for this browser; try the next level up.
+    }
+  }
+  return null
+}
+
 /** Swaps the renderer to an offscreen size and restores it afterwards. */
 function withRenderSize(width, height, fn) {
   const { gl, camera, canvas } = studioApi
@@ -181,22 +205,36 @@ export async function exportVideo({
         fastStart: 'in-memory',
       })
 
+      const base = { width, height, bitrate, framerate: effFps }
+      const codec = await pickAvcCodec(base)
+      if (!codec) throw new Error(`This browser cannot encode H.264 at ${width}x${height}. Try a smaller size.`)
+
+      // The encoder reports failures asynchronously. Hold the first one and
+      // raise it from the loop, so the export fails with the real reason
+      // rather than with "cannot call encode on a closed codec".
+      let encoderError = null
       const encoder = new VideoEncoder({
         output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => console.error('[export] encoder error', e),
+        error: (e) => {
+          encoderError = encoderError ?? e
+        },
       })
-      encoder.configure({ codec: 'avc1.640028', width, height, bitrate, framerate: effFps })
+      encoder.configure({ ...base, codec })
 
       const frameDuration = 1_000_000 / effFps
       for (let i = 0; i < totalFrames; i++) {
+        if (encoderError) throw encoderError
         await drawFrame(i)
 
         const frame = new VideoFrame(canvas, {
           timestamp: Math.round(i * frameDuration),
           duration: Math.round(frameDuration),
         })
-        encoder.encode(frame, { keyFrame: i % (effFps * 2) === 0 })
-        frame.close()
+        try {
+          encoder.encode(frame, { keyFrame: i % (effFps * 2) === 0 })
+        } finally {
+          frame.close()
+        }
 
         // Keep the encoder queue shallow so memory stays flat on long timelines.
         while (encoder.encodeQueueSize > 8) await new Promise((r) => setTimeout(r, 4))
