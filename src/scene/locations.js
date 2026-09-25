@@ -67,31 +67,6 @@ export const LOCATIONS = {
     },
     material: { bodyColor: '#a9a9ae' },
   },
-  slate: {
-    label: 'Slate',
-    background: {
-      mode: 'gradient',
-      colorTop: '#c6c6c8',
-      colorBottom: '#8e8f92',
-      groundVisible: true,
-      surface: 'slate',
-      groundColor: '#26282b',
-      props: false,
-    },
-    // Neutral and frontal, like a product table. The stone does the drama;
-    // coloured light on top of it would be two things competing.
-    lighting: {
-      // The key rakes low across the slab rather than coming down on it: a
-      // high light lands on the flat top, which has no relief by design, and
-      // leaves the broken face — the only interesting part — in shadow.
-      keyIntensity: 3.2, keyAzimuth: -38, keyElevation: 15,
-      fillIntensity: 0.4, rimIntensity: 0.7,
-      ambient: 0.16, hemi: 0.3, exposure: 1.0,
-      envPreset: 'softbox', envIntensity: 0.4,
-      shadows: true, shadowOpacity: 0.45, shadowBlur: 2.2,
-    },
-    material: { bodyColor: '#3c3c40' },
-  },
   noir: {
     label: 'Noir',
     background: { mode: 'gradient', colorTop: '#1b1f27', colorBottom: '#05070a', groundVisible: true, surface: 'mirror', groundColor: '#0d0f14', props: false },

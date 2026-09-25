@@ -312,89 +312,7 @@ export function rockGeometry() {
 }
 
 /** Surfaces that are real geometry rather than a texture on a plane. */
-/**
- * A black stone slab: flat on top, broken away everywhere else.
- *
- * Different animal from the rock ledge. That one is a boulder — round in
- * silhouette, warm, coarsely faceted. This is a wide plinth seen almost
- * level, so what has to carry it is fine, high-frequency relief across the
- * front face, catching the key along its ridges and going black in the
- * hollows. A texture on a flat plane cannot do that at a grazing angle: with
- * no silhouette and no self-shading it just reads as a photograph of stone
- * lying on the floor.
- *
- * The top is left perfectly flat, for the same reason the rock's cap is: a
- * device needs somewhere level to stand, and displacement on a surface you
- * are looking straight across is the one place it does no good at all.
- */
-const SLATE_W = 6
-const SLATE_H = 0.9
-// Shallow, and pushed back so its front edge sits between the device and the
-// camera. Centred and deep, the camera ends up standing on top of the slab and
-// never sees the broken face at all — which is the only part worth having.
-const SLATE_D = 1.15
-const SLATE_Z = -0.18
-
-let slateGeo = null
-
-export function slateGeometry() {
-  if (slateGeo) return slateGeo
-
-  const geo = new THREE.BoxGeometry(SLATE_W, SLATE_H, SLATE_D, 150, 30, 70)
-  const pos = geo.attributes.position
-  const v = new THREE.Vector3()
-
-  const hash = (x, y, z) => {
-    const n = Math.sin(x * 21.9898 + y * 68.233 + z * 41.719) * 43758.5453
-    return n - Math.floor(n)
-  }
-  // Base frequency is set against the slab's size, not picked by feel. At the
-  // boulder's 3.2 a six-unit face gets three waves across it, which is one
-  // lump, not rock; 14 puts a ridge roughly every 45cm with four octaves of
-  // break-up under it, which is the scale the reference actually has.
-  const noise = (x, y, z) => {
-    let sum = 0
-    let amp = 1
-    let f = 14
-    for (let o = 0; o < 5; o++) {
-      sum += (hash(x * f, y * f, z * f) - 0.5) * amp
-      amp *= 0.62
-      f *= 2.4
-    }
-    return sum
-  }
-
-  const topY = SLATE_H / 2
-  for (let i = 0; i < pos.count; i++) {
-    v.fromBufferAttribute(pos, i)
-    if (v.y > topY - 1e-4) continue // the plateau stays a plateau
-
-    // Ease the displacement to nothing as it approaches the top, so the ledge
-    // keeps a clean edge instead of chewing into the standing surface.
-    const depth = (topY - v.y) / SLATE_H
-    const ramp = Math.min(1, depth / 0.12)
-    const n = noise(v.x, v.y, v.z)
-    const fine = noise(v.x * 4.5, v.y * 4.5, v.z * 4.5)
-
-    const push = (n * 0.20 + fine * 0.07) * ramp
-    // Out along whichever face this vertex belongs to, so the slab breaks
-    // outward rather than shearing sideways.
-    const ax = Math.abs(v.x) / (SLATE_W / 2)
-    const az = Math.abs(v.z) / (SLATE_D / 2)
-    if (ax > az) v.x += Math.sign(v.x) * push
-    else v.z += Math.sign(v.z) * push
-    v.y += (n * 0.14 + fine * 0.05) * ramp
-
-    pos.setXYZ(i, v.x, v.y, v.z)
-  }
-
-  geo.translate(0, -topY, SLATE_Z) // stand the plateau on y = 0
-  geo.computeVertexNormals()
-  slateGeo = geo
-  return geo
-}
-
-export const SURFACE_GEOMETRY = { rock: () => rockGeometry(), slate: () => slateGeometry() }
+export const SURFACE_GEOMETRY = { rock: () => rockGeometry() }
 
 export const SURFACES = {
   studio: { label: 'Studio', color: '#ffffff', roughness: 0.92, metalness: 0, tile: 3 },
@@ -415,7 +333,6 @@ export const SURFACES = {
     reflect: { strength: 12, blur: [320, 90], mixBlur: 1, mirror: 0.35 },
   },
   rock: { label: 'Rock', color: '#1d1a18', roughness: 1, metalness: 0.04, tile: 1, geometry: 'rock' },
-  slate: { label: 'Slate', color: '#26282b', roughness: 0.95, metalness: 0.03, tile: 1, geometry: 'slate' },
 }
 
 const cache = new Map()
