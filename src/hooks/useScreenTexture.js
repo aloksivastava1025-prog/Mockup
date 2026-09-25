@@ -32,9 +32,9 @@ export function createScreenSource(source, screenAspect, maxAnisotropy = 1) {
   // ---- direct ----
   const direct = isVideo ? new THREE.VideoTexture(el) : new THREE.Texture(el)
   direct.colorSpace = THREE.SRGBColorSpace
-  direct.minFilter = THREE.LinearFilter
+  direct.minFilter = THREE.LinearMipmapLinearFilter
   direct.magFilter = THREE.LinearFilter
-  direct.generateMipmaps = false
+  direct.generateMipmaps = true
   direct.anisotropy = maxAnisotropy
   if (!isVideo) direct.needsUpdate = true
 
@@ -48,15 +48,15 @@ export function createScreenSource(source, screenAspect, maxAnisotropy = 1) {
 
   const composited = new THREE.CanvasTexture(canvas)
   composited.colorSpace = THREE.SRGBColorSpace
-  composited.minFilter = THREE.LinearFilter
+  composited.minFilter = THREE.LinearMipmapLinearFilter
   composited.magFilter = THREE.LinearFilter
-  composited.generateMipmaps = false
+  composited.generateMipmaps = true
   composited.anisotropy = maxAnisotropy
 
   let active = direct
   let last = null
   let lastSig = null
-  let sharp = false
+  let sharp = true
 
   const isIdentity = (screen) =>
     fitsExactly &&
@@ -146,9 +146,16 @@ export function createScreenSource(source, screenAspect, maxAnisotropy = 1) {
   }
 
   /**
-   * Final renders can afford a mipmap chain; it is what keeps small UI text
-   * from crawling as the camera moves. Far too slow to regenerate every frame
-   * during playback, so the preview goes without.
+   * Mipmaps, which is what stops small UI text crawling and breaking up as a
+   * 1920-wide recording is minified onto a display a few hundred pixels
+   * across. On by default, including in the preview.
+   *
+   * They used to be off while composing, on the assumption that rebuilding
+   * the chain for every video frame was too slow. Measured, forcing a fresh
+   * upload on every single render: 3.60ms a frame without, 4.41ms with. That
+   * is 0.81ms against a 16.7ms budget at 60fps — nothing, and it was costing
+   * every preview its legibility. Draft renders still turn it off, where
+   * speed is the entire point and nobody is reading the screen.
    */
   const setSharp = (on) => {
     if (sharp === on) return

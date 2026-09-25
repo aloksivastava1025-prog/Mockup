@@ -282,7 +282,7 @@ export async function exportImage({ aspect = '16:9', size = 'M', transparent = f
   } finally {
     scene.background = prevBackground
     hidden.forEach((o) => (o.visible = true))
-    studioApi.setSharpTexture?.(false)
+    studioApi.setSharpTexture?.(true)
     useStudio.getState().setExporting(null)
   }
 }
@@ -325,7 +325,7 @@ export async function exportVideo({
   return withRenderSize(width, height, async (restoreSize) => {
     const restore = () => {
       restoreSize()
-      setSharpTexture?.(false) // back to the fast preview path
+      setSharpTexture?.(true) // mipmaps are the preview's normal state too
       useStudio.getState().setExporting(null)
       useStudio.getState().setPlayhead(prevPlayhead)
       if (wasPlaying) useStudio.getState().setPlaying(true)
