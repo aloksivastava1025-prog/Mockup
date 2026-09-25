@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
-import { ColorField, Panel, Segmented, Slider, Toggle } from './controls.jsx'
+import { ColorField, Panel, Segmented, Select, Slider, Toggle } from './controls.jsx'
 import { ASPECTS, canEncodeMp4, dimensionsFor, downloadBlob, exportImage, exportVideo, SIZE_LABELS } from '../export/exportVideo.js'
 import { LOCATIONS, applyLocation } from '../scene/locations.js'
 import { SURFACES } from '../scene/surfaces.js'
@@ -144,29 +144,17 @@ export default function RightPanel({ onCollapse }) {
       </Panel>
 
       <Panel title="Location">
-        <div className="field stacked">
-          <div className="seg">
-            {Object.entries(LOCATIONS).slice(0, 4).map(([id, l]) => (
-              <button key={id} className={locationId === id ? 'on' : ''} onClick={() => applyLocation(id, useStudio)}>
-                {l.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="field stacked">
-          <div className="seg">
-            {Object.entries(LOCATIONS).slice(4).map(([id, l]) => (
-              <button key={id} className={locationId === id ? 'on' : ''} onClick={() => applyLocation(id, useStudio)}>
-                {l.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Select
+          label="Preset"
+          value={locationId}
+          options={Object.entries(LOCATIONS).map(([id, l]) => ({ value: id, label: l.label }))}
+          onChange={(id) => applyLocation(id, useStudio)}
+        />
         <p className="hint">Sets the surface, backdrop and light together. Tune any of them below.</p>
         <Toggle label="Props" value={!!background.props} onChange={(v) => update('background', { props: v })} />
         <Toggle label="Floor" value={background.groundVisible} onChange={(v) => update('background', { groundVisible: v })} />
         {background.groundVisible && (
-          <Segmented
+          <Select
             label="Surface"
             value={background.surface ?? 'studio'}
             options={Object.entries(SURFACES).map(([k, v]) => ({ value: k, label: v.label }))}
@@ -181,6 +169,7 @@ export default function RightPanel({ onCollapse }) {
           options={[
             { value: 'gradient', label: 'Gradient' },
             { value: 'color', label: 'Solid' },
+            { value: 'scene', label: 'Room' },
             { value: 'image', label: 'Image' },
             { value: 'transparent', label: 'None' },
           ]}

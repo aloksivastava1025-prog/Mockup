@@ -7,7 +7,8 @@ import { DEFAULT_DEVICE, DEVICES } from '../devices/index.js'
 import { sampleAt } from '../anim/interpolate.js'
 import { createScreenSource } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
-import { SURFACES, rockGeometry, surfaceTexture } from './surfaces.js'
+import { GEOMETRY_REPEAT, SURFACES, SURFACE_GEOMETRY, surfaceTexture } from './surfaces.js'
+import { backdropTexture } from './backdrops.js'
 import Props from './Props.jsx'
 
 const DEG = Math.PI / 180
@@ -25,6 +26,12 @@ function useGradientBackground() {
   useEffect(() => {
     if (background.mode === 'transparent') {
       scene.background = null
+      return
+    }
+    // A painted room. Cached and shared, so it is never disposed here.
+    if (background.mode === 'scene') {
+      const tex = backdropTexture(background.scene)
+      scene.background = tex ?? new THREE.Color(background.colorBottom ?? '#101418')
       return
     }
     if (background.mode === 'image') {
@@ -58,7 +65,7 @@ function useGradientBackground() {
     tex.colorSpace = THREE.SRGBColorSpace
     scene.background = tex
     return () => tex.dispose()
-  }, [scene, backdrop, background.mode, background.color, background.colorTop, background.colorBottom])
+  }, [scene, backdrop, background.mode, background.scene, background.color, background.colorTop, background.colorBottom])
 }
 
 function EnvRig({ preset, intensity }) {
@@ -162,6 +169,20 @@ function Ground() {
   // repeat scales with it, so tile size on the floor stays constant.
   const GROUND = 60
   const map = useMemo(() => surfaceTexture(kind, GROUND), [kind])
+  // A plane derives its repeat from the plane size. A desk slab does not, so
+  // without this the grain is stretched once across the whole top.
+  const geoMap = useMemo(() => {
+    const rep = GEOMETRY_REPEAT[surface.geometry]
+    if (!rep) return null
+    const tex = surfaceTexture(kind, GROUND)
+    if (!tex) return null
+    const t = tex.clone()
+    t.needsUpdate = true
+    t.wrapS = THREE.RepeatWrapping
+    t.wrapT = THREE.RepeatWrapping
+    t.repeat.set(rep[0], rep[1])
+    return t
+  }, [kind, surface.geometry])
 
   // Contact shadows cost a full extra scene render per frame. While a video
   // plays the device and camera are usually still — only the screen content
@@ -196,12 +217,21 @@ function Ground() {
   return (
     <>
       {groundVisible && surface.geometry && (
-        <mesh geometry={rockGeometry()} position={[0, -0.0005, 0]} receiveShadow castShadow userData={{ ground: true }}>
+        <mesh
+          geometry={SURFACE_GEOMETRY[surface.geometry]()}
+          position={[0, -0.0005, 0]}
+          receiveShadow
+          castShadow
+          userData={{ ground: true }}
+        >
           <meshStandardMaterial
-            color={background.groundColor ?? surface.color}
+            key={kind}
+            map={geoMap}
+            color={geoMap ? background.groundColor ?? '#ffffff' : background.groundColor ?? surface.color}
             roughness={surface.roughness}
             metalness={surface.metalness}
-            flatShading
+            // Facets suit stone and ruin a machined edge.
+            flatShading={surface.geometry === 'rock'}
           />
         </mesh>
       )}

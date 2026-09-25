@@ -85,6 +85,60 @@ function makeWood() {
   return c
 }
 
+/**
+ * Dark walnut, semi-gloss — a night desk rather than a daylit one.
+ *
+ * Built apart from `wood` instead of just darkening it. The lighter desk is a
+ * matte board with plank seams; this is one continuous slab, and at this value
+ * the grain has to carry almost all of the read, so it is finer, higher in
+ * contrast and interrupted by a few broad cathedral streaks. Darkening the
+ * other one gives mud.
+ */
+function makeWalnut() {
+  const [c, g] = canvas2d()
+  g.fillStyle = '#2a1c12'
+  g.fillRect(0, 0, SIZE, SIZE)
+
+  // Broad tonal bands across the slab, so it is not a flat brown field.
+  for (let i = 0; i < 14; i++) {
+    const y = rand() * SIZE
+    const h = 30 + rand() * 120
+    g.globalAlpha = 0.16 + rand() * 0.18
+    g.fillStyle = rand() > 0.5 ? '#1a1009' : '#3d2a1a'
+    g.fillRect(0, y, SIZE, h)
+  }
+
+  // Grain runs the full width, so it tiles horizontally for free.
+  for (let i = 0; i < 1500; i++) {
+    const y = rand() * SIZE
+    const h = 0.4 + rand() * 1.8
+    g.globalAlpha = 0.05 + rand() * 0.16
+    g.fillStyle = rand() > 0.42 ? '#120b06' : '#5b4028'
+    g.fillRect(0, y, SIZE, h)
+  }
+
+  // A few cathedral streaks: long, shallow arcs that break up the stripes and
+  // stop the whole thing reading as corduroy.
+  g.lineCap = 'round'
+  for (let i = 0; i < 22; i++) {
+    const y0 = rand() * SIZE
+    const amp = 6 + rand() * 26
+    g.globalAlpha = 0.07 + rand() * 0.14
+    g.strokeStyle = rand() > 0.5 ? '#0f0904' : '#6a4b2e'
+    g.lineWidth = 0.8 + rand() * 3.4
+    g.beginPath()
+    g.moveTo(0, y0)
+    for (let x = 0; x <= SIZE; x += 32) {
+      g.lineTo(x, y0 + Math.sin((x / SIZE) * Math.PI * (1 + rand())) * amp)
+    }
+    g.stroke()
+  }
+  g.globalAlpha = 1
+
+  speckle(g, 900, 0.03, 1.2)
+  return c
+}
+
 function makeConcrete() {
   const [c, g] = canvas2d()
   g.fillStyle = '#9d9d9e'
@@ -160,7 +214,7 @@ function makeStudio() {
   return c
 }
 
-const BUILDERS = { studio: makeStudio, wood: makeWood, concrete: makeConcrete, marble: makeMarble }
+const BUILDERS = { studio: makeStudio, wood: makeWood, walnut: makeWalnut, concrete: makeConcrete, marble: makeMarble }
 
 /**
  * A stone ledge for the device to stand on.
@@ -257,13 +311,53 @@ export function rockGeometry() {
   return geo
 }
 
+/**
+ * A desk top: a finite slab rather than a floor.
+ *
+ * This is the difference between "on a surface" and "in a room". The other
+ * surfaces are a 60-unit plane, which runs all the way to the horizon and
+ * covers the entire lower half of frame — so whatever is painted behind the
+ * scene only ever shows as a strip along the top. A desk has a far edge, and
+ * what is behind that edge is the view.
+ *
+ * Sized so there is more of it in front of the device than behind, the way a
+ * desk is actually arranged, and with the top at y = 0 so a device sits on it
+ * at the same height as on any other surface.
+ */
+const DESK_W = 3.0
+const DESK_D = 1.3
+const DESK_T = 0.055
+const DESK_Z = 0.2 // pushed toward the camera; the far edge lands at -0.45
+
+let deskGeo = null
+
+export function deskGeometry() {
+  if (deskGeo) return deskGeo
+  const geo = new THREE.BoxGeometry(DESK_W, DESK_T, DESK_D)
+  geo.translate(0, -DESK_T / 2, DESK_Z)
+  deskGeo = geo
+  return geo
+}
+
+/**
+ * How many times the surface texture repeats across a geometry surface.
+ * A plane scales its repeat from the plane size; these do not, so the grain
+ * would otherwise be stretched across the whole slab.
+ */
+export const GEOMETRY_REPEAT = { desk: [DESK_W / 1.5, DESK_D / 1.5] }
+
+export const SURFACE_GEOMETRY = { rock: () => rockGeometry(), desk: () => deskGeometry() }
+
 export const SURFACES = {
   studio: { label: 'Studio', color: '#ffffff', roughness: 0.92, metalness: 0, tile: 3 },
   wood: { label: 'Wood', color: '#ffffff', roughness: 0.55, metalness: 0, tile: 0.9 },
+  // Semi-gloss on purpose: the reference desk carries a soft reflection of
+  // whatever is standing on it, and at matte roughness that disappears.
+  walnut: { label: 'Walnut', color: '#ffffff', roughness: 0.32, metalness: 0.1, tile: 1.5, geometry: 'desk' },
   concrete: { label: 'Concrete', color: '#ffffff', roughness: 0.85, metalness: 0, tile: 1.4 },
   marble: { label: 'Marble', color: '#ffffff', roughness: 0.28, metalness: 0.05, tile: 1.6 },
   mirror: { label: 'Mirror', color: '#0d0f14', roughness: 0.85, metalness: 0.5, tile: 1 },
-  rock: { label: 'Rock', color: '#1d1a18', roughness: 1, metalness: 0.04, tile: 1, geometry: true },
+  rock: { label: 'Rock', color: '#1d1a18', roughness: 1, metalness: 0.04, tile: 1, geometry: 'rock' },
 }
 
 const cache = new Map()

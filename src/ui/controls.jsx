@@ -103,6 +103,30 @@ export function Segmented({ label, value, options, onChange }) {
   )
 }
 
+/**
+ * A dropdown, for lists a segmented control cannot hold.
+ *
+ * Segments divide the row evenly, so past about four options every label is
+ * clipped to a letter and an ellipsis and the control stops telling you
+ * anything. A select keeps the full names and costs one click.
+ */
+export function Select({ label, value, options, onChange }) {
+  return (
+    <div className="field">
+      {label && <label>{label}</label>}
+      <div className="control">
+        <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )
+}
+
 export function Toggle({ label, value, onChange }) {
   return (
     <div className="field">

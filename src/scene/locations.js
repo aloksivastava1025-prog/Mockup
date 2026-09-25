@@ -40,6 +40,30 @@ export const LOCATIONS = {
     lighting: { keyIntensity: 2.5, keyAzimuth: 34, keyElevation: 22, fillIntensity: 0.22, rimIntensity: 1.6, ambient: 0.07, hemi: 0.14, exposure: 1.0, envPreset: 'warm', envIntensity: 0.45, shadows: true, shadowOpacity: 0.55, shadowBlur: 2.6 },
     material: { bodyColor: '#c6c3bd' },
   },
+  night: {
+    label: 'Night desk',
+    background: {
+      mode: 'scene',
+      scene: 'window-night',
+      colorTop: '#05070c',
+      colorBottom: '#12161d',
+      groundVisible: true,
+      surface: 'walnut',
+      groundColor: '#8a6a4a',
+      props: false,
+    },
+    // Almost everything is off. The only real light is a warm pool on the desk
+    // and a cold edge from the window behind, which is what makes a night shot
+    // read as night rather than as a dim day.
+    lighting: {
+      keyIntensity: 1.5, keyAzimuth: 12, keyElevation: 44,
+      fillIntensity: 0.1, rimIntensity: 1.0,
+      ambient: 0.04, hemi: 0.08, exposure: 1.05,
+      envPreset: 'warm', envIntensity: 0.18,
+      shadows: true, shadowOpacity: 0.62, shadowBlur: 2.0,
+    },
+    material: { bodyColor: '#a9a9ae' },
+  },
   noir: {
     label: 'Noir',
     background: { mode: 'gradient', colorTop: '#1b1f27', colorBottom: '#05070a', groundVisible: true, surface: 'mirror', groundColor: '#0d0f14', props: false },
