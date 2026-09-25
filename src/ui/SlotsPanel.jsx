@@ -34,8 +34,11 @@ export default function SlotsPanel() {
     <Panel title="Sponsor slots" defaultOpen={false}>
       <Toggle label="Show slots" value={visible} onChange={setVisible} />
       <p className="hint">
-        {filled} of {slots.length} taken. Click a slot on the floor to fill it — an empty one asks
-        for an image straight away. Editor only: none of this reaches a render.
+        {visible
+          ? `${filled} of ${slots.length} taken. Click a slot on the floor to fill it — an empty one asks for an image straight away.`
+          : 'Turn this on to place brand marks on the surface around the device.'}{' '}
+        Editor only: the marks are pulled out of the scene before a render, so nothing here reaches
+        an export.
       </p>
 
       <div className="field stacked">

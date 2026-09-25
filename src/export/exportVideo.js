@@ -2,6 +2,7 @@ import { ArrayBufferTarget, Muxer } from 'mp4-muxer'
 import * as THREE from 'three'
 import { studioApi } from '../scene/studioApi.js'
 import { useStudio } from '../store/useStudio.js'
+import { hideSponsors } from './hideSponsors.js'
 
 /**
  * Output framings. Social formats matter as much as 16:9 here — a mockup that
@@ -240,6 +241,7 @@ export async function exportImage({ aspect = '16:9', size = 'M', transparent = f
   const prevBackground = scene.background
 
   useStudio.getState().setExporting({ phase: 'rendering', progress: 0 })
+  const showSponsors = hideSponsors(scene)
   studioApi.setSharpTexture?.(true)
 
   // A cutout drops the backdrop and the floor, leaving the device (and its
@@ -283,6 +285,7 @@ export async function exportImage({ aspect = '16:9', size = 'M', transparent = f
     })
     return { blob, filename: `mockup-${Date.now()}.png`, width, height }
   } finally {
+    showSponsors()
     scene.background = prevBackground
     hidden.forEach((o) => (o.visible = true))
     studioApi.setSharpTexture?.(true)
@@ -321,12 +324,14 @@ export async function exportVideo({
 
   useStudio.getState().setPlaying(false)
   useStudio.getState().setExporting({ phase: 'preparing', progress: 0 })
+  const showSponsors = hideSponsors(scene)
   if (source?.kind === 'video') source.el.pause()
   // Mipmapping is off in the preview for speed; a real render turns it on.
   setSharpTexture?.(!draft)
 
   return withRenderSize(width, height, async (restoreSize) => {
     const restore = () => {
+      showSponsors()
       restoreSize()
       setSharpTexture?.(true) // mipmaps are the preview's normal state too
       useStudio.getState().setExporting(null)

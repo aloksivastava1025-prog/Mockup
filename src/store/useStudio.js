@@ -229,7 +229,10 @@ export const useStudio = create((set, get) => ({
       ? { ...sl, label: 'LINEAR', url: 'https://linear.app' }
       : sl,
   ),
-  slotsVisible: true,
+  // Off until asked for. These sit inside the frame the user is composing, and
+  // a floor of logos and dashed boxes is the last thing someone judging a
+  // camera angle needs to look at.
+  slotsVisible: false,
   selectedSlot: null,
   setSlotsVisible: (slotsVisible) => set({ slotsVisible }),
   selectSlot: (selectedSlot) => set({ selectedSlot }),

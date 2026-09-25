@@ -174,7 +174,7 @@ export default function Sponsors({ sponsors = [], deck }) {
   ]
 
   return (
-    <group>
+    <group userData={{ sponsor: true }}>
       {deckMarks.slice(0, 2).map((s, i) =>
         s.image ? (
           <ImageSticker key={s.id} sponsor={s} x={slots[i][0]} z={slots[i][1]} y={deck.y} />
@@ -339,7 +339,7 @@ export function FloorSponsors() {
   if (exporting || !groundVisible || !slotsVisible) return null
 
   return (
-    <group>
+    <group userData={{ sponsor: true }}>
       {slots.map((slot) => (
         <FloorMark key={slot.id} slot={slot} selected={selected === slot.id} />
       ))}
