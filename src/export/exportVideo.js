@@ -46,6 +46,16 @@ function seek(video, time) {
 const supportsWebCodecs = () => typeof window !== 'undefined' && 'VideoEncoder' in window
 
 /**
+ * Whether this browser can produce a real MP4.
+ *
+ * Without WebCodecs the export falls back to recording the canvas in real time
+ * as WebM, which is slower, not frame-accurate and not what most people can
+ * drop into an editor. Worth saying before someone waits out a render, not
+ * after.
+ */
+export const canEncodeMp4 = () => supportsWebCodecs()
+
+/**
  * The AVC level has to match the frame size.
  *
  * `avc1.640028` is High@L4.0, which tops out at 8192 macroblocks: 1920x1080

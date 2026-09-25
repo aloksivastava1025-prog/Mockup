@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { ColorField, Panel, Segmented, Slider, Toggle } from './controls.jsx'
-import { ASPECTS, dimensionsFor, downloadBlob, exportImage, exportVideo, SIZE_LABELS } from '../export/exportVideo.js'
+import { ASPECTS, canEncodeMp4, dimensionsFor, downloadBlob, exportImage, exportVideo, SIZE_LABELS } from '../export/exportVideo.js'
 import { LOCATIONS, applyLocation } from '../scene/locations.js'
 import { SURFACES } from '../scene/surfaces.js'
 
@@ -47,6 +47,7 @@ export default function RightPanel({ onCollapse }) {
   const [bitrateMbps, setBitrateMbps] = useState(14)
   const [error, setError] = useState(null)
   const [lastMode, setLastMode] = useState(null)
+  const [batch, setBatch] = useState(null)
 
   const dims = dimensionsFor(aspect, size, draft)
 
@@ -59,6 +60,31 @@ export default function RightPanel({ onCollapse }) {
     } catch (e) {
       console.error(e)
       setError(e.message || String(e))
+    }
+  }
+
+  /**
+   * Every framing in one pass. Rendered one after another rather than in
+   * parallel: they all drive the same renderer and the same video element, so
+   * overlapping them would have two exports fighting over one camera.
+   */
+  const runAllFormats = async () => {
+    setError(null)
+    const all = Object.keys(ASPECTS)
+    try {
+      for (let i = 0; i < all.length; i++) {
+        setBatch({ done: i, total: all.length, aspect: all[i] })
+        const { blob, filename, mode } = await exportVideo({
+          fps, size, bitrateMbps, draft, blurSamples, depth, aspect: all[i],
+        })
+        setLastMode(mode)
+        downloadBlob(blob, filename.replace(/(\.\w+)$/, `-${all[i].replace(':', 'x')}$1`))
+      }
+    } catch (e) {
+      console.error(e)
+      setError(e.message || String(e))
+    } finally {
+      setBatch(null)
     }
   }
 
@@ -262,6 +288,14 @@ export default function RightPanel({ onCollapse }) {
         <button className="btn primary wide" disabled={!!exporting || !hasSource} onClick={runExport}>
           {exporting ? `${exporting.phase}… ${Math.round(exporting.progress * 100)}%` : draft ? 'Export draft' : 'Export video'}
         </button>
+        <button className="btn wide" disabled={!!exporting || !hasSource} onClick={runAllFormats}>
+          Export all 4 formats
+        </button>
+        <p className="hint">
+          {batch
+            ? `Rendering ${batch.done + 1} of ${batch.total} — ${batch.aspect}.`
+            : 'Landscape, story, square and portrait in one go — the set a launch post usually needs.'}
+        </p>
 
         <Toggle label="Cutout" value={transparent} onChange={setTransparent} />
         <button className="btn wide" disabled={!!exporting || !hasSource} onClick={runImage}>
@@ -279,6 +313,12 @@ export default function RightPanel({ onCollapse }) {
           </div>
         )}
         {!hasSource && <p className="hint">Add a recording or screenshot first.</p>}
+        {!canEncodeMp4() && (
+          <p className="hint" style={{ color: 'var(--danger)' }}>
+            This browser has no WebCodecs, so exports are captured in real time as WebM rather than
+            encoded as MP4 — slower, and not frame-accurate. Chrome or Edge will give you an MP4.
+          </p>
+        )}
         {error && <p className="hint" style={{ color: 'var(--danger)' }}>{error}</p>}
         {lastMode === 'realtime-webm' && (
           <p className="hint">

@@ -20,6 +20,7 @@ import Tablet, { tabletMeta } from './Tablet.jsx'
 export const DEVICES = {
   macbook: { ...macbookMeta, Component: MacBook, hasLid: true },
   tablet: { ...tabletMeta, Component: Tablet },
+  phone: { ...phoneMeta, Component: Phone },
   monitor: { ...monitorMeta, Component: Monitor },
 }
 
@@ -28,10 +29,5 @@ export const DEVICE_LIST = Object.values(DEVICES)
 /** Anything a saved project names that no longer exists falls back to this. */
 export const DEFAULT_DEVICE = DEVICES.macbook
 
-/**
- * Built and working, held back from the picker until it has had a design pass.
- * Re-expose by moving this into DEVICES as `phone: PHONE_PREVIEW`.
- */
-export const PHONE_PREVIEW = { ...phoneMeta, Component: Phone }
-
-export const COMING_SOON = [{ id: 'phone', label: 'Phone' }]
+/** Nothing held back at the moment. */
+export const COMING_SOON = []

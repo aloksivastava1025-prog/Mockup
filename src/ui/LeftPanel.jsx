@@ -79,7 +79,9 @@ export default function LeftPanel({ onCollapse }) {
             ))}
           </div>
         </div>
-        <p className="hint">Coming soon: {COMING_SOON.map((d) => d.label).join(', ')}.</p>
+        {COMING_SOON.length > 0 && (
+          <p className="hint">Coming soon: {COMING_SOON.map((d) => d.label).join(', ')}.</p>
+        )}
       </Panel>
 
       <Panel title="Scene">
