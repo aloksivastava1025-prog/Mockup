@@ -36,6 +36,30 @@ const GRILL_Y = BASE_TOP + GRILL_OFF
 const SCREEN_W = LW - 0.15 - 0.24
 const SCREEN_H = LD - 0.15 - 0.37
 
+/**
+ * The lid's front stack, in author units out from the lid's front face at 0.
+ *
+ * Same trap as the deck, and worse, because the bezel covers the display
+ * completely rather than touching it at an edge. These used to be 0.045 (bezel
+ * front), 0.048 (display) and 0.051 (glass): 0.003 apart, which after the
+ * ~0.019 scale is 5.8e-5 of a world unit.
+ *
+ * A 24-bit depth buffer over near 0.01 / far 100 resolves about 6e-6·z², so
+ * that separation survives a camera a metre out and loses to one three metres
+ * out — and it shrinks with the device's own scale on top. What you get when
+ * it loses is not a subtle fringe: two quads the size of the whole screen
+ * trading pixels, which reads as diagonal banding across the display.
+ *
+ * Twenty thousandths apart instead of three. That is 0.4mm at the size a
+ * 16-inch laptop is actually drawn, so nothing looks different, and it holds
+ * up to a camera far enough away that the device is a speck.
+ */
+const BEZEL_Z = LH / 2 - 0.02 // 0.04 centre, 0.01 thick, so its face is 0.045
+const DISPLAY_Z = BEZEL_Z + 0.025
+const GLASS_Z = DISPLAY_Z + 0.012
+const NOTCH_Z = GLASS_Z + 0.004
+const LENS_Z = NOTCH_Z + 0.012
+
 const UNIT = 0.34 / BW // author units -> world units
 
 /**
@@ -441,13 +465,24 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
             args={[LW - 0.15, LD - 0.15, 0.01]}
             radius={safeRadius([LW - 0.15, LD - 0.15, 0.01], 0.08)}
             smoothness={3}
-            position={[0, LD / 2, LH / 2 - 0.02]}
+            position={[0, LD / 2, BEZEL_Z]}
           >
-            <meshStandardMaterial color={material.bezelColor} metalness={0.05} roughness={0.92} />
+            {/* Nudged away from the camera in depth only. The separation above
+                should already settle this; a polygon offset costs nothing and
+                means the bezel cannot win even on a driver that hands back a
+                16-bit depth buffer. */}
+            <meshStandardMaterial
+              color={material.bezelColor}
+              metalness={0.05}
+              roughness={0.92}
+              polygonOffset
+              polygonOffsetFactor={1}
+              polygonOffsetUnits={1}
+            />
           </RoundedBox>
 
           {/* display */}
-          <mesh position={[0, LD / 2 - 0.06, LH / 2 - 0.012]} userData={{ screenSurface: true }}>
+          <mesh position={[0, LD / 2 - 0.06, DISPLAY_Z]} userData={{ screenSurface: true }}>
             <planeGeometry args={[SCREEN_W, SCREEN_H]} />
             {texture ? (
               <meshBasicMaterial
@@ -478,10 +513,15 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
           </mesh>
 
           {/* glass sheen */}
-          <mesh position={[0, LD / 2 - 0.06, LH / 2 - 0.009]}>
+          <mesh position={[0, LD / 2 - 0.06, GLASS_Z]}>
             <planeGeometry args={[SCREEN_W, SCREEN_H]} />
+            {/* A sheen over the picture and nothing else, so it has no business
+                writing depth — doing so put a second transparent surface in the
+                buffer a hair from the display and gave them something to argue
+                about. */}
             <meshPhysicalMaterial
               transparent
+              depthWrite={false}
               opacity={material.screenReflectivity}
               roughness={0.06}
               metalness={0}
@@ -491,10 +531,10 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
           </mesh>
 
           {/* notch + camera */}
-          <RoundedBox args={[1.2, 0.18, 0.015]} radius={safeRadius([1.2, 0.18, 0.015], 0.06)} smoothness={2} position={[0, LD - 0.22, LH / 2 - 0.015]}>
+          <RoundedBox args={[1.2, 0.18, 0.015]} radius={safeRadius([1.2, 0.18, 0.015], 0.06)} smoothness={2} position={[0, LD - 0.22, NOTCH_Z]}>
             <meshStandardMaterial color={material.bezelColor} metalness={0.05} roughness={0.92} />
           </RoundedBox>
-          <mesh position={[0, LD - 0.22, LH / 2 - 0.005]}>
+          <mesh position={[0, LD - 0.22, LENS_Z]}>
             <sphereGeometry args={[0.04, 16, 16]} />
             <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.3} />
           </mesh>
