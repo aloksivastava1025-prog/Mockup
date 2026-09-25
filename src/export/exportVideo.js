@@ -1,4 +1,5 @@
 import { ArrayBufferTarget, Muxer } from 'mp4-muxer'
+import * as THREE from 'three'
 import { studioApi } from '../scene/studioApi.js'
 import { useStudio } from '../store/useStudio.js'
 
@@ -99,12 +100,54 @@ async function seekSourceTo(time) {
   }
 }
 
-/** Poses the scene for `time` and draws it into the current buffer. */
-function renderPoseAt(time, animated) {
+const _focus = new THREE.Vector3()
+const _right = new THREE.Vector3()
+const _up = new THREE.Vector3()
+
+/**
+ * Poses the scene for `time` and draws it into the current buffer.
+ *
+ * `lens` offsets the camera across its own aperture. A pinhole renders
+ * everything sharp at every distance, which is the other half of why output
+ * reads as a render rather than a photograph. Shifting the entrance pupil and
+ * re-aiming at the focus point leaves whatever sits at that distance exactly
+ * where it was — so it stays sharp — while everything nearer or further moves
+ * between samples and averages into a circle of confusion. That is what a lens
+ * does, and it costs nothing beyond the samples the shutter already needs.
+ *
+ * The focus point is the camera's own target, so focus follows the shot
+ * without a second control to keep in sync.
+ */
+function renderPoseAt(time, animated, lens = null) {
   const { scene, gl, camera, applyAt } = studioApi
-  applyAt(time, { animated, driveCamera: true })
+  const eff = applyAt(time, { animated, driveCamera: true })
+  if (lens && (lens.x || lens.y)) {
+    _focus.set(...eff.camera.target)
+    camera.updateMatrixWorld()
+    _right.setFromMatrixColumn(camera.matrixWorld, 0)
+    _up.setFromMatrixColumn(camera.matrixWorld, 1)
+    camera.position.addScaledVector(_right, lens.x).addScaledVector(_up, lens.y)
+    camera.lookAt(_focus)
+    camera.updateMatrixWorld()
+  }
   scene.updateMatrixWorld(true)
   gl.render(scene, camera)
+}
+
+/**
+ * Sample positions on the aperture disc, by the golden angle.
+ *
+ * A random scatter clumps at the counts used here and the clumps show as
+ * streaks in the bokeh; the sunflower spiral spreads any number of points
+ * evenly, so eight samples give a round highlight rather than a lumpy one.
+ */
+function aperturePoints(n, radius) {
+  const GOLDEN = Math.PI * (3 - Math.sqrt(5))
+  return Array.from({ length: n }, (_, i) => {
+    const r = radius * Math.sqrt((i + 0.5) / n)
+    const a = i * GOLDEN
+    return { x: r * Math.cos(a), y: r * Math.sin(a) }
+  })
 }
 
 /** Renders the frame at `time` into the current drawing buffer. */
@@ -139,18 +182,24 @@ async function drawFrameAt(time, animated) {
  * by up to N/2 of 255 — invisible at the sample counts offered here, and worth
  * it against eight full-frame readbacks.
  */
-function makeAccumulator(width, height) {
+function makeAccumulator(width, height, { alpha = false } = {}) {
   const c = document.createElement('canvas')
   c.width = width
   c.height = height
-  const ctx = c.getContext('2d', { alpha: false, willReadFrequently: false })
+  const ctx = c.getContext('2d', { alpha, willReadFrequently: false })
   return {
     canvas: c,
     begin(samples) {
       ctx.globalCompositeOperation = 'source-over'
       ctx.globalAlpha = 1
-      ctx.fillStyle = '#000000'
-      ctx.fillRect(0, 0, width, height)
+      // 'lighter' adds premultiplied RGBA, so starting from transparent black
+      // averages the alpha channel along with the colour — which is what a
+      // cutout needs. An opaque accumulator starts from black instead.
+      if (alpha) ctx.clearRect(0, 0, width, height)
+      else {
+        ctx.fillStyle = '#000000'
+        ctx.fillRect(0, 0, width, height)
+      }
       ctx.globalCompositeOperation = 'lighter'
       ctx.globalAlpha = 1 / samples
     },
@@ -169,7 +218,7 @@ function makeAccumulator(width, height) {
  * a PNG — the common case for a hero image, and far cheaper than rendering a
  * whole clip just to pull one frame out of it.
  */
-export async function exportImage({ aspect = '16:9', size = 'M', transparent = false } = {}) {
+export async function exportImage({ aspect = '16:9', size = 'M', transparent = false, depth = 0 } = {}) {
   const { gl, applyAt, canvas, scene } = studioApi
   if (!gl || !applyAt) throw new Error('Scene is not ready yet.')
 
@@ -195,8 +244,27 @@ export async function exportImage({ aspect = '16:9', size = 'M', transparent = f
 
   try {
     const blob = await withRenderSize(width, height, async (restore) => {
-      await drawFrameAt(state.playhead, state.keyframes.length >= 2 && !state.previewLive)
-      const out = await new Promise((res) => canvas.toBlob(res, 'image/png'))
+      const animated = state.keyframes.length >= 2 && !state.previewLive
+      const t = state.playhead
+      let surface = canvas
+      if (depth > 0) {
+        // A still has no shutter to sample, so every sample here is a
+        // different point on the aperture and nothing else changes.
+        const SAMPLES = 16 // a still is rendered once; spend more on smoother bokeh
+        const lens = aperturePoints(SAMPLES, depth * 0.04)
+        const accum = makeAccumulator(width, height, { alpha: transparent })
+        await seekSourceTo(t)
+        accum.begin(SAMPLES)
+        for (let k = 0; k < SAMPLES; k++) {
+          renderPoseAt(t, animated, lens[k])
+          accum.add(canvas)
+        }
+        accum.end()
+        surface = accum.canvas
+      } else {
+        await drawFrameAt(t, animated)
+      }
+      const out = await new Promise((res) => surface.toBlob(res, 'image/png'))
       restore()
       return out
     })
@@ -221,6 +289,7 @@ export async function exportVideo({
   draft = false,
   blurSamples = 1,
   shutter = 180,
+  depth = 0,
   onProgress,
 } = {}) {
   const { gl, camera, scene, canvas, applyAt, setSharpTexture } = studioApi
@@ -253,10 +322,17 @@ export async function exportVideo({
     }
 
     const animated = state.keyframes.length >= 2
-    // A draft is for checking timing, and blur is the most expensive thing
-    // here, so it is always off in one. A still scene has nothing to blur.
-    const samples = draft || !animated ? 1 : Math.max(1, Math.round(blurSamples))
-    const shutterSeconds = (shutter / 360) / effFps
+    // Both effects are built out of the same accumulation, so they share the
+    // sample budget. Motion blur needs an animation to blur; depth of field
+    // does not, and asks for samples of its own when it is the only one on.
+    // A draft is for checking timing, so neither runs in one.
+    const wantBlur = !draft && animated && blurSamples > 1
+    const wantDepth = !draft && depth > 0
+    const samples = draft ? 1 : Math.max(wantBlur ? Math.round(blurSamples) : 1, wantDepth ? 8 : 1)
+    const shutterSeconds = wantBlur ? (shutter / 360) / effFps : 0
+    // The widest pupil worth offering: a laptop is 0.34 across, so 40mm of
+    // aperture already throws the far end of a family shot well out of focus.
+    const lens = wantDepth ? aperturePoints(samples, depth * 0.04) : null
     const accum = samples > 1 ? makeAccumulator(width, height) : null
 
     /** Renders output frame `i` and returns the surface holding it. */
@@ -269,7 +345,11 @@ export async function exportVideo({
       await seekSourceTo(t)
       accum.begin(samples)
       for (let k = 0; k < samples; k++) {
-        renderPoseAt(t + ((k + 0.5) / samples - 0.5) * shutterSeconds, animated)
+        renderPoseAt(
+          t + ((k + 0.5) / samples - 0.5) * shutterSeconds,
+          animated,
+          lens ? lens[k] : null,
+        )
         accum.add(canvas)
       }
       accum.end()

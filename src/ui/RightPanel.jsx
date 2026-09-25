@@ -38,6 +38,9 @@ export default function RightPanel({ onCollapse }) {
   // Shutter samples per frame. Off by default: it multiplies render time, and
   // a still composition has nothing to blur.
   const [blurSamples, setBlurSamples] = useState(1)
+  // Aperture, 0 = pinhole. Also off by default: it needs the same sample
+  // budget as full motion blur.
+  const [depth, setDepth] = useState(0)
   const [transparent, setTransparent] = useState(false)
   // Screen recordings are full of small text, which is where a low bitrate
   // shows first — default to the higher setting rather than the smaller file.
@@ -50,7 +53,7 @@ export default function RightPanel({ onCollapse }) {
   const runExport = async () => {
     setError(null)
     try {
-      const { blob, filename, mode } = await exportVideo({ fps, aspect, size, bitrateMbps, draft, blurSamples })
+      const { blob, filename, mode } = await exportVideo({ fps, aspect, size, bitrateMbps, draft, blurSamples, depth })
       setLastMode(mode)
       downloadBlob(blob, filename)
     } catch (e) {
@@ -62,7 +65,7 @@ export default function RightPanel({ onCollapse }) {
   const runImage = async () => {
     setError(null)
     try {
-      const { blob, filename } = await exportImage({ aspect, size, transparent })
+      const { blob, filename } = await exportImage({ aspect, size, transparent, depth })
       downloadBlob(blob, filename)
     } catch (e) {
       console.error(e)
@@ -242,6 +245,12 @@ export default function RightPanel({ onCollapse }) {
           {blurSamples > 1
             ? `Motion blur — ${blurSamples} samples across a 180° shutter, so fast moves read as filmed rather than as stop-motion. Roughly ${blurSamples}x slower to render, and off in Draft.`
             : 'No motion blur. Every frame is an instant, which is what makes quick moves look like stop-motion.'}
+        </p>
+        <Slider label="Depth" value={depth} min={0} max={1} step={0.02} precision={2} onChange={setDepth} />
+        <p className="hint">
+          {depth > 0
+            ? 'Aperture. Whatever the camera is aimed at stays sharp and the rest falls off, the way a lens behaves. Uses at least 8 samples, so it costs the same as full blur.'
+            : 'Pinhole — everything sharp at every distance. Open the aperture for a photographic falloff.'}
         </p>
         <Toggle label="Draft" value={draft} onChange={setDraft} />
         <p className="hint">
