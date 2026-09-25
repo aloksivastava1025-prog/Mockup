@@ -329,6 +329,16 @@ select:focus {
 }
 .kf-pop button:hover { background: #e6e6e6; }
 .kf-pop button.danger { color: var(--danger); }
+.kf-ease {
+  height: 20px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fff;
+  font: inherit;
+  font-size: 10.5px;
+  color: var(--text);
+  cursor: pointer;
+}
 
 /* ---------- effects stack ---------- */
 .fx-row { display: flex; align-items: center; gap: 4px; }

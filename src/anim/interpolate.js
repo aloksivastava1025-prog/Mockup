@@ -34,6 +34,29 @@ function catmull(p0, p1, p2, p3, t) {
   return t < 0.5 ? p1 : p2
 }
 
+/**
+ * Per-keyframe easing.
+ *
+ * A keyframe's ease describes the segment *leaving* it, so a track reads left
+ * to right: this key holds, then eases out, then runs straight into the next.
+ *
+ * `spline` is the default and the odd one out — it is the only mode that looks
+ * at the neighbouring keyframes, carrying speed through a pose instead of
+ * arriving at it. Every other mode is a plain A-to-B with the time remapped,
+ * which is what makes "slow in, fast out" possible at all: on a spline the
+ * shape of a segment is decided by its neighbours, not by you.
+ */
+export const EASES = {
+  spline: { label: 'Smooth' },
+  linear: { label: 'Linear', fn: (u) => u },
+  in: { label: 'Slow in', fn: (u) => u * u * u },
+  out: { label: 'Slow out', fn: (u) => 1 - Math.pow(1 - u, 3) },
+  inout: { label: 'Slow both', fn: (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2) },
+  hold: { label: 'Hold', fn: () => 0 },
+}
+
+export const EASE_LIST = Object.entries(EASES).map(([id, e]) => ({ id, label: e.label }))
+
 export function lerpStates(a, b, t) {
   if (typeof a === 'number' && typeof b === 'number') return a + (b - a) * t
   if (Array.isArray(a) && Array.isArray(b)) return a.map((v, i) => lerpStates(v, b[i] ?? v, t))
@@ -64,11 +87,15 @@ export function sampleAt(keyframes, time, live) {
   const span = b.time - a.time
   const u = span <= 1e-6 ? 0 : (time - a.time) / span
 
-  // A recorded take already contains the operator's own acceleration, and its
-  // simplification assumed linear prediction, so those play back straight.
-  if (a.ease === 'linear') {
+  // Anything with an explicit ease is a straight A-to-B with the time
+  // remapped. That covers recorded takes, which carry `linear` because the
+  // operator's own acceleration is already in the samples and the
+  // simplification assumed linear prediction between them.
+  const ease = EASES[a.ease]
+  if (ease?.fn) {
+    const t = ease.fn(u)
     const out = {}
-    for (const g of ANIMATED_GROUPS) out[g] = lerpStates(a.state[g], b.state[g], u)
+    for (const g of ANIMATED_GROUPS) out[g] = lerpStates(a.state[g], b.state[g], t)
     return out
   }
 

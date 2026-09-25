@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { PRESETS, applyPreset } from '../anim/presets.js'
+import { EASE_LIST } from '../anim/interpolate.js'
 
 export default function Timeline() {
   const trackRef = useRef(null)
@@ -19,6 +20,7 @@ export default function Timeline() {
   const applyKeyframe = useStudio((s) => s.applyKeyframe)
   const moveKeyframe = useStudio((s) => s.moveKeyframe)
   const restampKeyframe = useStudio((s) => s.restampKeyframe)
+  const setKeyframeEase = useStudio((s) => s.setKeyframeEase)
   const dragRef = useRef(null)
   const recording = useStudio((s) => s.recording)
   const startRecording = useStudio((s) => s.startRecording)
@@ -175,6 +177,18 @@ export default function Timeline() {
                   onChange={(e) => moveKeyframe(k.id, parseFloat(e.target.value) || 0)}
                 />
                 <span className="unit">s</span>
+                <select
+                  className="kf-ease"
+                  title="How the move leaving this keyframe is timed"
+                  value={k.ease ?? 'spline'}
+                  onChange={(e) => setKeyframeEase(k.id, e.target.value)}
+                >
+                  {EASE_LIST.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
                 <button title="Save the scene as it looks now into this keyframe" onClick={() => restampKeyframe(k.id)}>
                   Restamp
                 </button>

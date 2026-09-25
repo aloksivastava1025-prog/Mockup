@@ -457,6 +457,13 @@ export const useStudio = create((set, get) => ({
       return { ...historyPatch(s, `kf.move.${id}`), keyframes: next, playhead: t, previewLive: false }
     }),
 
+  /** How the segment leaving this keyframe is timed. */
+  setKeyframeEase: (id, ease) =>
+    set((s) => ({
+      ...historyPatch(s, null),
+      keyframes: s.keyframes.map((k) => (k.id === id ? { ...k, ease } : k)),
+    })),
+
   /** Re-record a keyframe from whatever the scene looks like now. */
   restampKeyframe: (id) =>
     set((s) => {
