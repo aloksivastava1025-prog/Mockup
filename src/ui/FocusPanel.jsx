@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
-import { Panel, Slider } from './controls.jsx'
-import { buildFocusMove } from '../anim/focusMove.js'
+import { Panel, Segmented, Slider } from './controls.jsx'
+import { FILM_STYLES, buildFilm } from '../anim/director.js'
 import { aspectRatio } from '../export/exportVideo.js'
 
 /**
@@ -45,7 +45,7 @@ export default function FocusPanel() {
 
   if (!source) {
     return (
-      <Panel title="Focus">
+      <Panel title="Film">
         <p className="hint">Add a recording or screenshot first.</p>
       </Panel>
     )
@@ -84,21 +84,24 @@ export default function FocusPanel() {
 
   const build = () => {
     setError(null)
-    const move = buildFocusMove(focus, aspectRatio('16:9'))
-    if (!move) {
+    const film = buildFilm({ areas: focus.areas, style: focus.style, seconds: focus.seconds, aspect: aspectRatio('16:9') })
+    if (!film) {
       setError('Could not read the display. Give the scene a moment and try again.')
       return
     }
     useStudio.getState().commit()
-    useStudio.getState().setDuration(move.duration)
-    useStudio.setState({ keyframes: move.keyframes, playhead: 0, previewLive: false })
+    useStudio.getState().setDuration(film.duration)
+    // The style knows what it needs to look right; setting it here saves the
+    // user having to learn that a fast cut is unwatchable without blur.
+    useStudio.getState().setRender(film.render)
+    useStudio.setState({ keyframes: film.keyframes, playhead: 0, previewLive: false })
   }
 
   const live = drag ? rectOf(drag) : null
   const pct = (v) => `${v * 100}%`
 
   return (
-    <Panel title="Focus">
+    <Panel title="Film">
       <div
         ref={boxRef}
         className="focus-box"
@@ -131,18 +134,30 @@ export default function FocusPanel() {
         </div>
       ))}
 
+      <Segmented
+        label="Style"
+        value={focus.style}
+        options={FILM_STYLES.map((s) => ({ value: s.id, label: s.label }))}
+        onChange={(v) => updateFocus({ style: v })}
+      />
+      <Segmented
+        label="Length"
+        value={focus.seconds}
+        options={[10, 20, 30].map((n) => ({ value: n, label: `${n}s` }))}
+        onChange={(v) => updateFocus({ seconds: v })}
+      />
+      <button className="btn primary wide" onClick={build}>
+        Build film
+      </button>
+      <p className="hint">
+        Writes the whole timeline: opens wide, visits each area, throws to a contrasting angle
+        between looks, then pulls out to a hero. Sets motion blur and depth of field to match the
+        style — then just export.
+      </p>
       {focus.areas.length > 0 && (
-        <>
-          <Slider label="Open" value={focus.open} min={0} max={4} step={0.1} precision={1} unit="s" onChange={(v) => updateFocus({ open: v }, 'open')} />
-          <Slider label="Travel" value={focus.travel} min={0.3} max={5} step={0.1} precision={1} unit="s" onChange={(v) => updateFocus({ travel: v }, 'travel')} />
-          <Slider label="Hold" value={focus.hold} min={0.2} max={6} step={0.1} precision={1} unit="s" onChange={(v) => updateFocus({ hold: v }, 'hold')} />
-          <button className="btn primary wide" onClick={build}>
-            Build camera move
-          </button>
-          <button className="btn wide" onClick={clearFocusAreas}>
-            Clear areas
-          </button>
-        </>
+        <button className="btn wide" onClick={clearFocusAreas}>
+          Clear areas
+        </button>
       )}
       {error && <p className="hint" style={{ color: 'var(--danger)' }}>{error}</p>}
     </Panel>

@@ -90,13 +90,19 @@ const defaults = {
    * coordinates: 0..1 across, y from the top. A camera move is generated from
    * them rather than the areas being animated themselves.
    */
-  focus: { areas: [], hold: 1.4, travel: 1.6, open: 1.0 },
+  focus: { areas: [], style: 'cinematic', seconds: 20 },
   /**
    * Text over the shot. Each title carries its own in-point and duration
    * rather than being keyframed, because a caption is a thing that appears
    * and leaves, not a value that is interpolated.
    */
   titles: [],
+  /**
+   * Render settings. In the document rather than in the export panel's own
+   * state, so a saved project remembers how it was meant to be rendered — and
+   * so the director can set them when it builds a film.
+   */
+  render: { blurSamples: 1, depth: 0 },
 }
 
 const clone = (v) => JSON.parse(JSON.stringify(v))
@@ -146,6 +152,7 @@ export const DOC_KEYS = [
   'spacing',
   'focus',
   'titles',
+  'render',
   'adaptScreen',
   'keyframes',
   'duration',
@@ -239,6 +246,9 @@ export const useStudio = create((set, get) => ({
       }
       return { ...historyPatch(s, null), companions: arrange(list, s.deviceId, s.spacing) }
     }),
+
+  setRender: (patch, key = null) =>
+    set((s) => ({ ...historyPatch(s, key && `render.${key}`), render: { ...s.render, ...patch } })),
 
   addTitle: () =>
     set((s) => ({

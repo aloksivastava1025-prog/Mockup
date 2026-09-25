@@ -35,12 +35,15 @@ export default function RightPanel({ onCollapse }) {
   const [aspect, setAspect] = useState('16:9')
   const [size, setSize] = useState('M')
   const [draft, setDraft] = useState(false)
-  // Shutter samples per frame. Off by default: it multiplies render time, and
-  // a still composition has nothing to blur.
-  const [blurSamples, setBlurSamples] = useState(1)
-  // Aperture, 0 = pinhole. Also off by default: it needs the same sample
-  // budget as full motion blur.
-  const [depth, setDepth] = useState(0)
+  // Shutter samples and aperture live in the store: a saved project should
+  // remember how it was meant to be rendered, and the director sets them when
+  // it builds a film.
+  const render = useStudio((s) => s.render)
+  const setRender = useStudio((s) => s.setRender)
+  const blurSamples = render.blurSamples
+  const depth = render.depth
+  const setBlurSamples = (v) => setRender({ blurSamples: v })
+  const setDepth = (v) => setRender({ depth: v }, 'depth')
   const [transparent, setTransparent] = useState(false)
   // Screen recordings are full of small text, which is where a low bitrate
   // shows first — default to the higher setting rather than the smaller file.
