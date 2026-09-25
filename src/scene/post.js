@@ -38,6 +38,10 @@ const FRAG = /* glsl */ `
   uniform float uVignette;
   uniform float uGrain;
   uniform float uTime;
+  uniform float uExposure;
+  uniform float uContrast;
+  uniform float uSaturation;
+  uniform float uTemperature;
 
   /**
    * No tone mapping and no sRGB encode in here. Both belong to the OutputPass
@@ -102,6 +106,27 @@ const FRAG = /* glsl */ `
       col *= mix(1.0, v, uVignette);
     }
 
+    // --- grade, before the grain: film grain sits on the finished picture,
+    // it is not something the grade acts on ---
+    if (abs(uExposure) > 0.0001) col *= pow(2.0, uExposure);
+    if (abs(uTemperature) > 0.0001) {
+      // Warm pushes red and pulls blue, which is what a white-balance shift
+      // does; adjusting all three would just be a tint.
+      col.r *= 1.0 + uTemperature * 0.18;
+      col.b *= 1.0 - uTemperature * 0.18;
+    }
+    if (abs(uContrast) > 0.0001) {
+      // Pivoted at 0.18, mid grey in linear light. Pivoting at 0.5 instead
+      // darkens everything as you add contrast, because 0.5 linear is already
+      // a bright value.
+      col = (col - 0.18) * (1.0 + uContrast) + 0.18;
+    }
+    if (abs(uSaturation) > 0.0001) {
+      float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+      col = mix(vec3(lum), col, 1.0 + uSaturation);
+    }
+    col = max(col, vec3(0.0));
+
     if (uGrain > 0.0001) {
       float n = hash(vUv * vec2(1920.0, 1080.0) + uTime) - 0.5;
       col += n * uGrain * 0.18;
@@ -118,6 +143,15 @@ export const EFFECTS = {
   chroma: { label: 'Chromatic abb.', uniform: 'uChroma', max: 1, initial: 0.3 },
   fisheye: { label: 'Fish eye', uniform: 'uFisheye', max: 1, min: -1, initial: 0.35 },
   grain: { label: 'Grain', uniform: 'uGrain', max: 1, initial: 0.3 },
+  exposure: { label: 'Exposure', uniform: 'uExposure', min: -2, max: 2, initial: 0.3 },
+  contrast: { label: 'Contrast', uniform: 'uContrast', min: -0.8, max: 1.5, initial: 0.25 },
+  saturation: { label: 'Saturation', uniform: 'uSaturation', min: -1, max: 1.5, initial: 0.25 },
+  temperature: { label: 'Warmth', uniform: 'uTemperature', min: -1, max: 1, initial: 0.3 },
+  // Ambient occlusion is deliberately absent. It was wired up through
+  // GTAOPass and shaded the backdrop along with the geometry — the sky is not
+  // drawn into the depth buffer, and although the shader discards at depth 1
+  // the result still came back dimming the whole frame. Worth doing, needs the
+  // background masked properly, and half of it is worse than none.
 }
 
 export const EFFECT_LIST = Object.entries(EFFECTS).map(([id, e]) => ({ id, label: e.label }))
@@ -132,6 +166,10 @@ export function makePostPass() {
     uVignette: { value: 0 },
     uGrain: { value: 0 },
     uTime: { value: 0 },
+    uExposure: { value: 0 },
+    uContrast: { value: 0 },
+    uSaturation: { value: 0 },
+    uTemperature: { value: 0 },
   }
 
   let composer = null
@@ -170,7 +208,7 @@ export function makePostPass() {
       out[def.uniform] = (out[def.uniform] ?? 0) + e.amount
       any = true
     }
-    return any ? out : null
+    return any ? { uniforms: out } : null
   }
 
   return {
@@ -193,7 +231,9 @@ export function makePostPass() {
       composer.setPixelRatio(1)
       composer.setSize(w, h)
       uniforms.uTexel.value.set(1 / w, 1 / h)
-      for (const def of Object.values(EFFECTS)) uniforms[def.uniform].value = active[def.uniform] ?? 0
+      for (const def of Object.values(EFFECTS)) {
+        if (def.uniform) uniforms[def.uniform].value = active.uniforms[def.uniform] ?? 0
+      }
       uniforms.uTime.value = performance.now() * 0.001
 
       composer.render()
