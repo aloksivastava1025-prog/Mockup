@@ -91,9 +91,10 @@ export default function FocusPanel() {
     }
     useStudio.getState().commit()
     useStudio.getState().setDuration(film.duration)
-    // The style knows what it needs to look right; setting it here saves the
-    // user having to learn that a fast cut is unwatchable without blur.
-    useStudio.getState().setRender(film.render)
+    // Deliberately does not touch Blur or Depth. It used to set them from the
+    // style, which meant pressing Build film silently overwrote whatever the
+    // user had chosen in Export. Building a timeline and changing someone's
+    // render settings are two different acts; this one only does the first.
     useStudio.setState({ keyframes: film.keyframes, playhead: 0, previewLive: false })
   }
 
@@ -153,7 +154,7 @@ export default function FocusPanel() {
         {IGNORES_AREAS.has(focus.style)
           ? 'A storyboarded ten-shot arc — far, reveal, power, orbit, lid open, screen, throw, orbit, detail, hero. The machine turns, lifts and opens against the camera. It performs the object, so it ignores the areas above.'
           : 'Writes the whole timeline: opens wide, visits each area, throws to a contrasting angle between looks, then pulls out to a hero.'}
-        {' '}Sets motion blur and depth of field to match, then just export.
+        {' '}Blur and depth of field stay yours, in Export.
       </p>
       {focus.areas.length > 0 && (
         <button className="btn wide" onClick={clearFocusAreas}>
