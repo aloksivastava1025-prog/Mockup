@@ -1,4 +1,8 @@
 import * as THREE from 'three'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 
 /**
  * A single full-frame pass for the optical effects.
@@ -35,41 +39,17 @@ const FRAG = /* glsl */ `
   uniform float uGrain;
   uniform float uTime;
 
-  uniform float uExposure;
-
   /**
-   * ACES filmic, matching three's own. Three applies tone mapping and colour
-   * conversion only on the final draw to the canvas, never when rendering into
-   * a target — so the target holds raw untone-mapped HDR and the pass has to do
-   * both itself. Skipping this shifted every frame: darks down, highlights
-   * clipped to white, measurably 7/255 off a direct render.
+   * No tone mapping and no sRGB encode in here. Both belong to the OutputPass
+   * at the end of the chain, which is the only thing that knows what the
+   * renderer is configured for.
+   *
+   * Doing them by hand was three attempts of being subtly wrong: darks crushed
+   * by 17/255 one way, highlights lifted by 27 the other, and the reflective
+   * floor different again because MeshReflectorMaterial renders its own pass
+   * and does not get the same treatment. Working in linear and letting three
+   * finish the frame is not a shortcut, it is the only version that is right.
    */
-  vec3 acesFilmic(vec3 color) {
-    const mat3 inMat = mat3(
-      0.59719, 0.07600, 0.02840,
-      0.35458, 0.90834, 0.13383,
-      0.04823, 0.01566, 0.83777
-    );
-    const mat3 outMat = mat3(
-       1.60475, -0.10208, -0.00327,
-      -0.53108,  1.10813, -0.07276,
-      -0.07367, -0.00605,  1.07602
-    );
-    color *= uExposure / 0.6;
-    color = inMat * color;
-    vec3 a = color * (color + 0.0245786) - 0.000090537;
-    vec3 b = color * (0.983729 * color + 0.4329510) + 0.238081;
-    color = a / b;
-    color = outMat * color;
-    return clamp(color, 0.0, 1.0);
-  }
-
-  // Linear to sRGB. A raw ShaderMaterial gets no colour-space conversion from
-  // three, so the encode is ours to do as well.
-  vec3 toSRGB(vec3 c) {
-    return mix(c * 12.92, 1.055 * pow(max(c, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
-  }
-
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
   }
@@ -127,7 +107,7 @@ const FRAG = /* glsl */ `
       col += n * uGrain * 0.18;
     }
 
-    gl_FragColor = vec4(toSRGB(acesFilmic(col)), 1.0);
+    gl_FragColor = vec4(col, 1.0);
   }
 `
 
@@ -143,12 +123,8 @@ export const EFFECTS = {
 export const EFFECT_LIST = Object.entries(EFFECTS).map(([id, e]) => ({ id, label: e.label }))
 
 export function makePostPass() {
-  const target = new THREE.WebGLRenderTarget(1, 1, {
-    type: THREE.HalfFloatType,
-    samples: 4, // keep the multisampling the direct-to-canvas path was getting
-  })
   const uniforms = {
-    tDiffuse: { value: target.texture },
+    tDiffuse: { value: null },
     uTexel: { value: new THREE.Vector2(1 / 1920, 1 / 1080) },
     uFisheye: { value: 0 },
     uChroma: { value: 0 },
@@ -156,16 +132,27 @@ export function makePostPass() {
     uVignette: { value: 0 },
     uGrain: { value: 0 },
     uTime: { value: 0 },
-    uExposure: { value: 1 },
   }
-  const quadScene = new THREE.Scene()
-  const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
-  const quad = new THREE.Mesh(
-    new THREE.PlaneGeometry(2, 2),
-    new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, depthTest: false, depthWrite: false }),
-  )
-  quad.frustumCulled = false
-  quadScene.add(quad)
+
+  let composer = null
+  let effectPass = null
+  let bound = null // the renderer/scene/camera the chain was built for
+
+  /**
+   * Built lazily and rebuilt if the scene or camera is swapped. The chain is
+   * RenderPass -> our effects -> OutputPass; that last one is the piece worth
+   * having, because it applies the renderer's tone mapping and colour space at
+   * the end, once, which is what three does for a direct render too.
+   */
+  const build = (gl, scene, camera) => {
+    composer?.dispose?.()
+    composer = new EffectComposer(gl)
+    composer.addPass(new RenderPass(scene, camera))
+    effectPass = new ShaderPass({ uniforms, vertexShader: VERT, fragmentShader: FRAG })
+    composer.addPass(effectPass)
+    composer.addPass(new OutputPass())
+    bound = { gl, scene, camera }
+  }
 
   /** Collapses the stack into uniform values; disabled rows contribute nothing. */
   const gather = (effects) => {
@@ -184,40 +171,30 @@ export function makePostPass() {
     render(gl, scene, camera, effects) {
       const active = gather(effects)
       if (!active) {
-        // Nothing on: go straight to the canvas, exactly as before. Routing an
-        // untouched frame through a target would cost a copy and risk shifting
-        // the colour for no reason at all.
+        // Nothing on: straight to the canvas, byte for byte what it always
+        // was. No point paying for a chain to change nothing.
         gl.setRenderTarget(null)
         gl.render(scene, camera)
         return
       }
 
+      if (!composer || bound.gl !== gl || bound.scene !== scene || bound.camera !== camera) {
+        build(gl, scene, camera)
+      }
+
       const w = gl.domElement.width
       const h = gl.domElement.height
-      if (target.width !== w || target.height !== h) target.setSize(w, h)
+      composer.setPixelRatio(1)
+      composer.setSize(w, h)
       uniforms.uTexel.value.set(1 / w, 1 / h)
       for (const def of Object.values(EFFECTS)) uniforms[def.uniform].value = active[def.uniform] ?? 0
       uniforms.uTime.value = performance.now() * 0.001
-      uniforms.uExposure.value = gl.toneMappingExposure
 
-      // Tone mapping has to belong to exactly one of us. Three's own pass is
-      // switched off for the scene render, so the target holds plain linear
-      // light and the shader below is the only thing that maps it. Leaving
-      // both on double-maps, and measured that lifted the display from 27 to
-      // 79 — mid greys turning to fog.
-      const prevToneMapping = gl.toneMapping
-      gl.toneMapping = THREE.NoToneMapping
-      gl.setRenderTarget(target)
-      gl.clear()
-      gl.render(scene, camera)
-      gl.setRenderTarget(null)
-      gl.toneMapping = prevToneMapping
-      gl.render(quadScene, quadCam)
+      composer.render()
     },
     dispose() {
-      target.dispose()
-      quad.geometry.dispose()
-      quad.material.dispose()
+      composer?.dispose?.()
+      composer = null
     },
   }
 }

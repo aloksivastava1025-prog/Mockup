@@ -110,6 +110,17 @@ const defaults = {
   effects: [],
 }
 
+/**
+ * Unique ids for the things the user adds.
+ *
+ * Date.now() alone is not one. Adding two focus areas in the same millisecond
+ * — which a script does trivially, and a fast double-click does too — gave
+ * them the same id, and React then treats two rows as one: React warned about
+ * it, and removing either deleted both.
+ */
+let idSeq = 0
+const newId = (prefix) => `${prefix}_${Date.now().toString(36)}_${(idSeq++).toString(36)}`
+
 const clone = (v) => JSON.parse(JSON.stringify(v))
 
 /** How far a device reaches either side of its own origin, in world units. */
@@ -214,7 +225,7 @@ export const useStudio = create((set, get) => ({
       const next = [
         ...s.companions,
         {
-          id: `dev_${Date.now().toString(36)}_${s.companions.length}`,
+          id: newId('dev'),
           deviceId,
           position: [0, 0, -0.05],
           rotation: [0, 0, 0],
@@ -241,7 +252,7 @@ export const useStudio = create((set, get) => ({
         list = [
           ...list,
           {
-            id: `dev_${Date.now().toString(36)}_${list.length}`,
+            id: newId('dev'),
             deviceId: pick.id,
             position: [0, 0, -0.05],
             rotation: [0, 0, 0],
@@ -256,7 +267,7 @@ export const useStudio = create((set, get) => ({
   addEffect: (type, initial) =>
     set((s) => ({
       ...historyPatch(s, null),
-      effects: [...s.effects, { id: `fx_${Date.now().toString(36)}`, type, amount: initial, on: true }],
+      effects: [...s.effects, { id: newId('fx'), type, amount: initial, on: true }],
     })),
 
   updateEffect: (id, patch, key = null) =>
@@ -277,7 +288,7 @@ export const useStudio = create((set, get) => ({
       titles: [
         ...s.titles,
         {
-          id: `ttl_${Date.now().toString(36)}`,
+          id: newId('ttl'),
           text: 'Your headline',
           x: 0.5, y: 0.18, size: 0.075, weight: 600,
           align: 'center', color: '#ffffff', anim: 'rise',
@@ -300,7 +311,7 @@ export const useStudio = create((set, get) => ({
       ...historyPatch(s, null),
       focus: {
         ...s.focus,
-        areas: [...s.focus.areas, { id: `fa_${Date.now().toString(36)}`, ...rect }],
+        areas: [...s.focus.areas, { id: newId('fa'), ...rect }],
       },
     })),
 
