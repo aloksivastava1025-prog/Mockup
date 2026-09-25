@@ -297,6 +297,11 @@ const RIDGE_LOOK = {
  *   20-27 it rolls over as it rises, the camera lifting with it
  *   27-30 dead still, fading out
  *
+ * Framed wide throughout. The machine is 0.34 units across, so at these
+ * distances it occupies roughly a quarter to a third of the frame and the
+ * ledge, the horizon and the sky are all in shot — tight enough to read the
+ * display, loose enough that the environment is the other half of the picture.
+ *
  * Two values are deliberately repeated rather than interpolated. The lid holds
  * at exactly 2 through every keyframe before its beat, and the float holds at
  * exactly 0 through the opening creep, because a Catmull-Rom tangent reaches
@@ -305,25 +310,28 @@ const RIDGE_LOOK = {
  */
 const LIFTOFF_30 = () => [
   // --- ground level, shut ---
-  shot(0,     { ry: -26, lid: 2, fy: 0, az: 54, el: 3, d: 0.64, fov: 28, ty: 0.020, b: 0.5, g: 0 }, 1),
-  shot(1.8,   { ry: -26, lid: 2, fy: 0, az: 49, el: 3, d: 0.57, fov: 28, ty: 0.020, b: 0.5, g: 0 }, 0),
-  shot(4,     { ry: -25, lid: 2, fy: 0, az: 43, el: 4, d: 0.51, fov: 28, ty: 0.022, b: 0.5, g: 0 }, 0),
-  shot(6,     { ry: -24, lid: 2, fy: 0, az: 38, el: 5, d: 0.48, fov: 28, ty: 0.024, b: 0.5, g: 0 }, 0),
+  shot(0,     { ry: -26, lid: 2, fy: 0, az: 54, el: 5, d: 0.98, fov: 30, ty: 0.030, b: 0.5, g: 0 }, 1),
+  shot(1.8,   { ry: -26, lid: 2, fy: 0, az: 49, el: 5, d: 0.92, fov: 30, ty: 0.030, b: 0.5, g: 0 }, 0),
+  shot(4,     { ry: -25, lid: 2, fy: 0, az: 43, el: 6, d: 0.86, fov: 30, ty: 0.032, b: 0.5, g: 0 }, 0),
+  shot(6,     { ry: -24, lid: 2, fy: 0, az: 38, el: 8, d: 0.82, fov: 30, ty: 0.034, b: 0.5, g: 0 }, 0),
   // --- liftoff, still shut ---
-  shot(8.5,   { ry: -23, lid: 2, fy: 0.07, az: 34, el: 4, d: 0.52, fov: 29, ty: 0.072, b: 0.52, g: 0.02 }, 0),
-  shot(12,    { ry: -22, lid: 2, fy: 0.18, az: 29, el: 6, d: 0.60, fov: 29, ty: 0.176, b: 0.55, g: 0.04 }, 0),
+  // The camera climbs faster than the machine here. Matching its rate would
+  // put the eye level with a shut lid, which from the side is a 6mm sliver;
+  // staying above it keeps the whole top face in shot as it goes up.
+  shot(8.5,   { ry: -23, lid: 2, fy: 0.07, az: 34, el: 11, d: 0.86, fov: 30, ty: 0.075, b: 0.52, g: 0.02 }, 0),
+  shot(12,    { ry: -22, lid: 2, fy: 0.18, az: 29, el: 15, d: 0.94, fov: 30, ty: 0.170, b: 0.55, g: 0.04 }, 0),
   // --- the open, on the way up ---
-  shot(15,    { ry: -20, lid: 34,  fy: 0.25, az: 24, el: 9,  d: 0.66, fov: 29, ty: 0.252, b: 0.72, g: 0.14 }, 0),
-  shot(17.5,  { ry: -18, lid: 78,  fy: 0.30, az: 19, el: 12, d: 0.72, fov: 30, ty: 0.306, b: 0.90, g: 0.26 }, 0),
-  shot(20,    { ry: -16, lid: 104, fy: 0.34, az: 14, el: 15, d: 0.78, fov: 30, ty: 0.350, b: 1.05, g: 0.38 }, 0),
+  shot(15,    { ry: -20, lid: 34,  fy: 0.25, az: 24, el: 16, d: 1.00, fov: 30, ty: 0.235, b: 0.72, g: 0.14 }, 0),
+  shot(17.5,  { ry: -18, lid: 78,  fy: 0.30, az: 19, el: 16, d: 1.06, fov: 30, ty: 0.285, b: 0.90, g: 0.26 }, 0),
+  shot(20,    { ry: -16, lid: 104, fy: 0.34, az: 14, el: 16, d: 1.12, fov: 30, ty: 0.325, b: 1.05, g: 0.38 }, 0),
   // --- it rolls over as it climbs; the camera falls back to show the ledge it
   //     left. Framing the target below the machine puts it in the upper third
   //     with the stone underneath it, which is the point of the whole move.
-  shot(23,    { ry: -12, lid: 104, rz: -8,  rx: 3, fy: 0.42, az: 4,   el: 18, d: 0.86, fov: 30, ty: 0.420 }, 0),
-  shot(27,    { ry: -6,  lid: 104, rz: -20, rx: 7, fy: 0.52, az: -12, el: 20, d: 1.00, fov: 31, ty: 0.455 }, 0),
+  shot(23,    { ry: -12, lid: 104, rz: -8,  rx: 3, fy: 0.42, az: 4,   el: 18, d: 1.22, fov: 30, ty: 0.390 }, 0),
+  shot(27,    { ry: -6,  lid: 104, rz: -20, rx: 7, fy: 0.52, az: -12, el: 20, d: 1.38, fov: 31, ty: 0.480 }, 0),
   // --- held still while the frame fades out ---
-  shot(28.4,  { ry: -4,  lid: 104, rz: -24, rx: 8, fy: 0.55, az: -17, el: 21, d: 1.12, fov: 31, ty: 0.460 }, 0),
-  shot(30,    { ry: -4,  lid: 104, rz: -24, rx: 8, fy: 0.55, az: -17, el: 21, d: 1.12, fov: 31, ty: 0.460 }, 1),
+  shot(28.4,  { ry: -4,  lid: 104, rz: -24, rx: 8, fy: 0.55, az: -17, el: 21, d: 1.45, fov: 31, ty: 0.505 }, 0),
+  shot(30,    { ry: -4,  lid: 104, rz: -24, rx: 8, fy: 0.55, az: -17, el: 21, d: 1.45, fov: 31, ty: 0.505 }, 1),
 ]
 
 export const PRESETS = [
