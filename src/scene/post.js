@@ -148,7 +148,13 @@ export function makePostPass() {
     composer?.dispose?.()
     composer = new EffectComposer(gl)
     composer.addPass(new RenderPass(scene, camera))
-    effectPass = new ShaderPass({ uniforms, vertexShader: VERT, fragmentShader: FRAG })
+    // A ShaderMaterial, not a plain shader object. Handed the latter,
+    // ShaderPass clones the uniforms — so every value written to ours went to
+    // an object the material had never heard of, and the effects silently did
+    // nothing. Passing a material keeps the reference.
+    effectPass = new ShaderPass(
+      new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG }),
+    )
     composer.addPass(effectPass)
     composer.addPass(new OutputPass())
     bound = { gl, scene, camera }
