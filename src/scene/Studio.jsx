@@ -36,11 +36,21 @@ function useFog() {
   const fog = useStudio((s) => s.background.fog)
 
   useEffect(() => {
-    if (!fog) {
-      scene.fog = null
-      return
-    }
-    scene.fog = new THREE.Fog(fog.color, fog.near, fog.far)
+    scene.fog = fog ? new THREE.Fog(fog.color, fog.near, fog.far) : null
+    // Materials compile the fog chunk into their shader or they do not. Adding
+    // or removing scene.fog after they are built changes nothing on screen
+    // until each one is recompiled, which is why simply assigning it looked
+    // like it had no effect at all.
+    scene.traverse((o) => {
+      const m = o.material
+      if (!m) return
+      for (const mat of Array.isArray(m) ? m : [m]) {
+        // A screen is emissive: it is showing its own light, not reflecting
+        // the room's, so haze in front of it would be wrong.
+        if (mat.isMeshBasicMaterial) mat.fog = false
+        mat.needsUpdate = true
+      }
+    })
     return () => {
       scene.fog = null
     }
