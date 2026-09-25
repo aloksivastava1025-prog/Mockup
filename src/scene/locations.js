@@ -51,6 +51,9 @@ export const LOCATIONS = {
       surface: 'walnut',
       groundColor: '#8a6a4a',
       props: false,
+      // Without this the floor's far edge cuts a hard line across the window
+      // and the whole thing reads as a table top.
+      fog: { color: '#0b1018', near: 1.1, far: 5.0 },
     },
     // Almost everything is off. The only real light is a warm pool on the desk
     // and a cold edge from the window behind, which is what makes a night shot
@@ -85,7 +88,9 @@ export function applyLocation(id, store) {
   store.getState().commit()
   store.setState({
     locationId: id,
-    background: { ...s.background, ...loc.background },
+    // `fog` is opt-in per location, so a location that does not mention it has
+    // to clear it rather than inherit whatever the last one set.
+    background: { ...s.background, fog: null, ...loc.background },
     lighting: { ...s.lighting, ...loc.lighting },
     material: { ...s.material, ...loc.material },
   })

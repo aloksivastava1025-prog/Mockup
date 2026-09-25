@@ -18,6 +18,35 @@ const DEG = Math.PI / 180
 const ADAPT_MIN = 0.6
 const ADAPT_MAX = 1.7
 
+/**
+ * Distance haze, so the floor does not end in a visible line.
+ *
+ * The ground is a finite plane, and its far edge lands within a fraction of a
+ * degree of the horizon. Against a pale backdrop nobody notices, because the
+ * two are a similar value there. Against a dark window the warm floor meets
+ * cold night at full contrast and the seam reads as the edge of a table —
+ * which is exactly what it looks like, and exactly what it is not.
+ *
+ * Fading the floor into the backdrop's own colour before it runs out removes
+ * the edge instead of hiding it. Set near far enough out that the device,
+ * which sits within about a unit of the origin, is never touched.
+ */
+function useFog() {
+  const { scene } = useThree()
+  const fog = useStudio((s) => s.background.fog)
+
+  useEffect(() => {
+    if (!fog) {
+      scene.fog = null
+      return
+    }
+    scene.fog = new THREE.Fog(fog.color, fog.near, fog.far)
+    return () => {
+      scene.fog = null
+    }
+  }, [scene, fog?.color, fog?.near, fog?.far])
+}
+
 function useGradientBackground() {
   const { scene } = useThree()
   const background = useStudio((s) => s.background)
@@ -384,6 +413,7 @@ function Rig() {
   const target = useMemo(() => new THREE.Vector3(), [])
 
   useGradientBackground()
+  useFog()
 
   // Position everything for a given timeline time. Used by both the live
   // viewport loop and the frame-accurate exporter.

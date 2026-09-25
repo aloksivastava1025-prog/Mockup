@@ -65,6 +65,8 @@ const defaults = {
     surface: 'studio', // see scene/surfaces.js
     props: false, // desk dressing; gives wide and aerial framings a sense of place
     groundColor: '#d4d4d4',
+    // Distance haze, set by a location that needs it. See useFog in Studio.jsx.
+    fog: null,
   },
   /**
    * Extra devices standing alongside the main one, for a family shot.
