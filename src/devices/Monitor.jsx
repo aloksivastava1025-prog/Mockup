@@ -36,6 +36,7 @@ const Z_SHEEN = 1.8
 export const monitorMeta = {
   id: 'monitor',
   label: 'Display 32"',
+  width: PANEL_W * UNIT,
   screenAspect: SCREEN_W / SCREEN_H,
   hasLid: false,
   adaptRange: [0.8, 1.25],

@@ -355,6 +355,15 @@ input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; border-colo
 .btn.sm { height: 22px; padding: 0 7px; font-size: 10.5px; }
 .btn.wide { width: 100%; }
 
+/* One companion device's controls, set apart so several in a row stay legible */
+.subgroup {
+  display: grid;
+  gap: 6px;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--line);
+}
+.subgroup > .field > label { font-weight: 500; color: var(--text); }
+
 .hint { font-size: 10.5px; color: var(--muted); line-height: 1.5; }
 .kbd {
   background: #f5f5f5;

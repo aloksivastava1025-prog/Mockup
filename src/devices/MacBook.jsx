@@ -49,6 +49,7 @@ const R5_Z = R4_Z + STEP
 export const macbookMeta = {
   id: 'macbook',
   label: 'MacBook 16"',
+  width: BW * UNIT, // world units across, used to space a family shot
   screenAspect: SCREEN_W / SCREEN_H,
   hinge: [0, BH * UNIT, (-BD / 2) * UNIT],
   frame: { d: 0.88, ty: 0.12, fov: 34 },

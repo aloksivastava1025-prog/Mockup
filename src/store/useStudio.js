@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { samplesToKeyframes } from '../anim/record.js'
+import { DEFAULT_DEVICE, DEVICE_LIST, DEVICES } from '../devices/index.js'
 
 // Groups listed here are the ones a keyframe snapshots and the animator interpolates.
 export const ANIMATED_GROUPS = ['device', 'camera', 'screen', 'post']
@@ -64,9 +65,56 @@ const defaults = {
     props: false, // desk dressing; gives wide and aerial framings a sense of place
     groundColor: '#d4d4d4',
   },
+  /**
+   * Extra devices standing alongside the main one, for a family shot.
+   *
+   * Posed by hand and never animated. The timeline drives exactly one device,
+   * and widening it to a list would mean every keyframe, every preset and
+   * every saved project carried a variable-length pose array — for a shot
+   * whose whole point is that the group stands still while the camera moves
+   * around it. The hero in the middle carries whatever animation there is.
+   *
+   * Shape: [{ id, deviceId, position:[x,y,z], rotation:[x,y,z], lidAngle, scale }]
+   *
+   * These live in defaults rather than being declared on their own so that
+   * Reset All clears the scene back to a single device.
+   */
+  companions: [],
+  /** Clear space between neighbouring devices in the row, in world units. */
+  spacing: 0.05,
 }
 
 const clone = (v) => JSON.parse(JSON.stringify(v))
+
+/** How far a device reaches either side of its own origin, in world units. */
+const halfWidth = (id) => ((DEVICES[id] ?? DEFAULT_DEVICE).width ?? 0.34) / 2
+
+/**
+ * Lay the companions out either side of the hero, nearest first.
+ *
+ * Each one is placed against the edge of what is already on its side rather
+ * than at a fixed step, because the bodies differ by nearly 3x across — a
+ * fixed step either drops the 32" display through the laptop or leaves the
+ * tablet marooned. `gap` is the clear space between neighbours, so the slider
+ * means the same thing whatever devices are in the row.
+ *
+ * Depth and scale are left alone: those are the user's, and re-running the
+ * layout should not throw away a companion they pushed back or shrank.
+ */
+function arrange(companions, heroId, gap) {
+  const edge = { 1: halfWidth(heroId), '-1': halfWidth(heroId) }
+  return companions.map((c, i) => {
+    const side = i % 2 === 0 ? 1 : -1
+    const hw = halfWidth(c.deviceId)
+    const x = side * (edge[side] + gap + hw)
+    edge[side] += gap + hw * 2
+    return {
+      ...c,
+      position: [+x.toFixed(3), c.position[1], c.position[2]],
+      rotation: [c.rotation[0], -20 * side, c.rotation[2]],
+    }
+  })
+}
 
 /** The parts of the store that make up a saved project / an undo step. */
 export const DOC_KEYS = [
@@ -79,6 +127,8 @@ export const DOC_KEYS = [
   'background',
   'locationId',
   'deviceId',
+  'companions',
+  'spacing',
   'adaptScreen',
   'keyframes',
   'duration',
@@ -113,7 +163,87 @@ export const useStudio = create((set, get) => ({
   // out of the animated groups so presets can never clobber it.
   adaptScreen: true,
   setAdaptScreen: (adaptScreen) => set((s) => ({ ...historyPatch(s, null), adaptScreen })),
-  setDevice: (deviceId) => set((s) => ({ ...historyPatch(s, null), deviceId })),
+  // The hero's own width sets where the row starts, so swapping it moves
+  // every companion.
+  setDevice: (deviceId) =>
+    set((s) => ({
+      ...historyPatch(s, null),
+      deviceId,
+      companions: arrange(s.companions, deviceId, s.spacing),
+    })),
+
+  setSpacing: (spacing) =>
+    set((s) => ({
+      ...historyPatch(s, 'scene.spacing'),
+      spacing,
+      companions: arrange(s.companions, s.deviceId, spacing),
+    })),
+
+  addCompanion: (deviceId) =>
+    set((s) => {
+      const next = [
+        ...s.companions,
+        {
+          id: `dev_${Date.now().toString(36)}_${s.companions.length}`,
+          deviceId,
+          position: [0, 0, -0.05],
+          rotation: [0, 0, 0],
+          lidAngle: 102,
+          scale: 1,
+        },
+      ]
+      return { ...historyPatch(s, null), companions: arrange(next, s.deviceId, s.spacing) }
+    }),
+
+  /**
+   * How many devices stand in the scene, hero included — the control most
+   * people actually reach for, rather than adding and removing one at a time.
+   * Growing the row picks device types the scene does not already show, so
+   * "3" gives a laptop, a tablet and a display instead of three laptops.
+   */
+  setDeviceCount: (n) =>
+    set((s) => {
+      const want = Math.max(0, n - 1)
+      let list = s.companions.slice(0, want)
+      while (list.length < want) {
+        const shown = new Set([s.deviceId, ...list.map((c) => c.deviceId)])
+        const pick = DEVICE_LIST.find((d) => !shown.has(d.id)) ?? DEVICE_LIST[0]
+        list = [
+          ...list,
+          {
+            id: `dev_${Date.now().toString(36)}_${list.length}`,
+            deviceId: pick.id,
+            position: [0, 0, -0.05],
+            rotation: [0, 0, 0],
+            lidAngle: 102,
+            scale: 1,
+          },
+        ]
+      }
+      return { ...historyPatch(s, null), companions: arrange(list, s.deviceId, s.spacing) }
+    }),
+
+  updateCompanion: (id, patch, key = null) =>
+    set((s) => {
+      const list = s.companions.map((c) => (c.id === id ? { ...c, ...patch } : c))
+      // Swapping a companion for a wider or narrower body invalidates every
+      // position beyond it, so the row has to be laid out again.
+      const relayout = patch.deviceId !== undefined
+      return {
+        ...historyPatch(s, key && `companion.${id}.${key}`),
+        companions: relayout ? arrange(list, s.deviceId, s.spacing) : list,
+      }
+    }),
+
+  removeCompanion: (id) =>
+    set((s) => ({
+      ...historyPatch(s, null),
+      companions: arrange(
+        s.companions.filter((c) => c.id !== id),
+        s.deviceId,
+        s.spacing,
+      ),
+    })),
 
   // Play the recording live on the device while composing, instead of showing
   // the single frame under the playhead. Not part of the document: it only
@@ -288,6 +418,9 @@ export const useStudio = create((set, get) => ({
     if (!data || data.app !== 'mockup-studio') throw new Error('Not a Mockup Studio project file.')
     const next = {}
     for (const k of DOC_KEYS) if (data[k] !== undefined) next[k] = clone(data[k])
+    // A project saved before companions existed has none. Leaving the key alone
+    // would carry whatever is on screen into a file that never had it.
+    if (data.companions === undefined) next.companions = []
     set({ ...next, past: [], future: [], playhead: 0, isPlaying: false, previewLive: true })
   },
 

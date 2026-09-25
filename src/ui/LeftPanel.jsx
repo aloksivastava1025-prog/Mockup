@@ -34,6 +34,12 @@ export default function LeftPanel({ onCollapse }) {
   const source = useStudio((s) => s.source)
   const autoplay = useStudio((s) => s.autoplay)
   const setAutoplay = useStudio((s) => s.setAutoplay)
+  const companions = useStudio((s) => s.companions)
+  const spacing = useStudio((s) => s.spacing)
+  const setSpacing = useStudio((s) => s.setSpacing)
+  const setDeviceCount = useStudio((s) => s.setDeviceCount)
+  const updateCompanion = useStudio((s) => s.updateCompanion)
+  const removeCompanion = useStudio((s) => s.removeCompanion)
 
   // Devices differ wildly in size; reframe the camera so the new one is not
   // left as a speck or bursting out of frame.
@@ -74,6 +80,115 @@ export default function LeftPanel({ onCollapse }) {
           </div>
         </div>
         <p className="hint">Coming soon: {COMING_SOON.map((d) => d.label).join(', ')}.</p>
+      </Panel>
+
+      <Panel title="Scene">
+        <Segmented
+          label="Screens"
+          value={String(companions.length + 1)}
+          options={['1', '2', '3', '4'].map((n) => ({ value: n, label: n }))}
+          onChange={(v) => setDeviceCount(Number(v))}
+        />
+        {companions.length > 0 && (
+          <Slider
+            label="Spacing"
+            value={spacing}
+            min={-0.06}
+            max={0.5}
+            step={0.005}
+            precision={3}
+            onChange={setSpacing}
+          />
+        )}
+        {companions.length === 0 ? (
+          <p className="hint">
+            Stand more devices next to this one for a family shot — same footage on each, fitted to
+            its own screen. Extra devices hold still; the timeline animates the main one.
+          </p>
+        ) : (
+          <p className="hint">
+            Spacing is the clear gap between neighbours, so it means the same whatever sizes are in
+            the row. Nudge any one device below.
+          </p>
+        )}
+        {companions.map((c, i) => (
+            <div key={c.id} className="subgroup">
+              <div className="field">
+                <label>Device {i + 2}</label>
+                <button className="btn ghost sm" onClick={() => removeCompanion(c.id)}>
+                  remove
+                </button>
+              </div>
+              <div className="field stacked">
+                <div className="seg">
+                  {DEVICE_LIST.map((d) => (
+                    <button
+                      key={d.id}
+                      className={c.deviceId === d.id ? 'on' : ''}
+                      onClick={() => updateCompanion(c.id, { deviceId: d.id })}
+                    >
+                      {d.label.split(' ')[0]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Slider
+                label="Across"
+                value={c.position[0]}
+                min={-1.5}
+                max={1.5}
+                step={0.01}
+                precision={2}
+                onChange={(v) =>
+                  updateCompanion(c.id, { position: [v, c.position[1], c.position[2]] }, 'x')
+                }
+              />
+              <Slider
+                label="Depth"
+                value={c.position[2]}
+                min={-1.5}
+                max={1.5}
+                step={0.01}
+                precision={2}
+                onChange={(v) =>
+                  updateCompanion(c.id, { position: [c.position[0], c.position[1], v] }, 'z')
+                }
+              />
+              <Slider
+                label="Turn"
+                value={c.rotation[1]}
+                min={-180}
+                max={180}
+                step={1}
+                unit="°"
+                precision={0}
+                onChange={(v) =>
+                  updateCompanion(c.id, { rotation: [c.rotation[0], v, c.rotation[2]] }, 'ry')
+                }
+              />
+              {DEVICES[c.deviceId]?.hasLid && (
+                <Slider
+                  label="Lid"
+                  value={c.lidAngle}
+                  min={0}
+                  max={130}
+                  step={0.5}
+                  unit="°"
+                  precision={0}
+                  onChange={(v) => updateCompanion(c.id, { lidAngle: v }, 'lid')}
+                />
+              )}
+              <Slider
+                label="Scale"
+                value={c.scale}
+                min={0.2}
+                max={3}
+                step={0.01}
+                precision={2}
+                onChange={(v) => updateCompanion(c.id, { scale: v }, 'scale')}
+              />
+            </div>
+        ))}
       </Panel>
 
       <Panel title="Screen" right={<ResetBtn group="screen" />}>

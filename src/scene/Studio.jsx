@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, Environment, Lightformer, MeshReflectorMaterial, OrbitControls } from '@react-three/drei'
@@ -170,7 +170,12 @@ function Ground() {
   // timeline is actually moving the device.
   const isPlaying = useStudio((s) => s.isPlaying)
   const pose = useStudio((s) => s.device)
-  const poseKey = `${pose.position.join()}|${pose.rotation.join()}|${pose.lidAngle}|${pose.scale}`
+  const companions = useStudio((s) => s.companions)
+  // Companions are part of what the catcher sees, so moving one has to
+  // invalidate the cached shadow the same way moving the hero does.
+  const poseKey =
+    `${pose.position.join()}|${pose.rotation.join()}|${pose.lidAngle}|${pose.scale}` +
+    companions.map((c) => `|${c.deviceId}${c.position.join()}${c.rotation.join()}${c.lidAngle}${c.scale}`).join('')
 
   // Lift the device and its shadow has to answer for it: a hard contact patch
   // under something floating in mid-air reads as a mistake. Spread it, fade it,
@@ -178,7 +183,14 @@ function Ground() {
   const lift = Math.max(0, pose.position[1] ?? 0)
   const shadowOpacity = lighting.shadowOpacity / (1 + lift * 6)
   const shadowBlur = lighting.shadowBlur * (1 + lift * 8)
-  const shadowScale = 1.4 + lift * 1.6
+  // The catcher is a fixed square centred on the origin, so a companion placed
+  // out to the side falls off it and loses its shadow entirely. Grow it to
+  // reach the furthest device.
+  const spread = companions.reduce(
+    (m, c) => Math.max(m, Math.abs(c.position[0]) + Math.abs(c.position[2])),
+    0,
+  )
+  const shadowScale = 1.4 + lift * 1.6 + spread * 2.4
   const shadowFar = 0.55 + lift * 1.2
 
   return (
@@ -259,6 +271,50 @@ function FadeOverlay({ meshRef, matRef }) {
   )
 }
 
+/**
+ * A second (or third) device standing alongside the hero.
+ *
+ * Posed by hand and never animated — see the note on `companions` in the
+ * store. The lid is set imperatively for the same reason the hero's is: the
+ * device components expose it as a ref on the hinge group, not as a prop.
+ */
+function Companion({ spec, texture, material, screen, textureAspect }) {
+  const rootRef = useRef()
+  const lidRef = useRef()
+  const entry = DEVICES[spec.deviceId] ?? DEFAULT_DEVICE
+  const Component = entry.Component
+
+  // The screen texture is composited to the *hero's* aspect, so a companion of
+  // a different shape would stretch it. Reshaping the companion's own body to
+  // that aspect — exactly what Adapt does for the hero — makes its quad match
+  // instead. Outside its own tolerance we leave the real shape alone and take
+  // the stretch, which is the lesser of the two wrongs.
+  const [lo, hi] = entry.adaptRange ?? [ADAPT_MIN, ADAPT_MAX]
+  const wanted = textureAspect ? entry.screenAspect / textureAspect : 1
+  const aspectScale = wanted >= lo && wanted <= hi ? wanted : 1
+
+  useLayoutEffect(() => {
+    if (lidRef.current) lidRef.current.rotation.x = ((spec.lidAngle ?? 102) - 90) * -DEG
+  })
+
+  return (
+    <group
+      position={spec.position}
+      rotation={[spec.rotation[0] * DEG, spec.rotation[1] * DEG, spec.rotation[2] * DEG]}
+      scale={spec.scale}
+    >
+      <Component
+        rootRef={rootRef}
+        lidRef={lidRef}
+        texture={texture}
+        material={material}
+        screen={screen}
+        aspectScale={aspectScale}
+      />
+    </group>
+  )
+}
+
 function Rig() {
   const rootRef = useRef()
   const lidRef = useRef()
@@ -287,6 +343,7 @@ function Rig() {
   const device = DEVICES[deviceId] ?? DEFAULT_DEVICE
   const adaptScreen = useStudio((s) => s.adaptScreen)
   const background = useStudio((s) => s.background)
+  const companions = useStudio((s) => s.companions)
 
   // With Adapt on the display takes the source's aspect ratio, stretched along
   // the display's height axis. Clamped, because some pairings are nonsense: a
@@ -576,6 +633,16 @@ function Rig() {
         screen={screen}
         aspectScale={aspectScale}
       />
+      {companions.map((c) => (
+        <Companion
+          key={c.id}
+          spec={c}
+          texture={texture}
+          material={material}
+          screen={screen}
+          textureAspect={effectiveAspect}
+        />
+      ))}
       <OrbitControls
         ref={controlsRef}
         enabled={orbitEnabled && !timelineOwnsCamera}

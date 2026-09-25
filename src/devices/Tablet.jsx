@@ -44,6 +44,7 @@ const Z_SHEEN = 0.9
 export const tabletMeta = {
   id: 'tablet',
   label: 'Tablet 11"',
+  width: W * UNIT,
   screenAspect: SCREEN_W / SCREEN_H,
   hasLid: false,
   // A tablet pushed much past these stops reading as a tablet.
