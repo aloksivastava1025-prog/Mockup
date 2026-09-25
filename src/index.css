@@ -580,6 +580,12 @@ select:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A segmented control holding more choices than fit on one line. Slots are
+   picked by position in the scene, so these are just a numbered index — they
+   can wrap without anything becoming unreadable. */
+.seg.wrap { flex-wrap: wrap; }
+.seg.wrap button { flex: 0 0 auto; min-width: 24px; }
+
 .seg button:hover { color: var(--text); }
 .seg button.on {
   background: #fff;

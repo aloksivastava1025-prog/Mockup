@@ -787,7 +787,7 @@ function Rig() {
     <>
       <Lights />
       <Ground />
-      <FloorSponsors sponsors={sponsors} />
+      <FloorSponsors />
       <Props visible={!!background.props} />
       <FadeOverlay meshRef={fadeMeshRef} matRef={fadeMatRef} />
       <TitleOverlay meshRef={titleMeshRef} matRef={titleMatRef} map={titleLayer.texture} />

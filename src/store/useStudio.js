@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { samplesToKeyframes } from '../anim/record.js'
 import { DEFAULT_DEVICE, DEVICE_LIST, DEVICES } from '../devices/index.js'
 import stickerCat from '../assets/sticker-cat.jpg'
+import { blankSlot, defaultFloorSlots } from '../scene/floorSlots.js'
 
 // Re-exported so existing callers keep one import; the list itself lives in
 // anim/groups.js, away from anything that pulls in React.
@@ -213,12 +214,37 @@ export const useStudio = create((set, get) => ({
   sponsors: [
     { id: 'sp1', label: 'Cat', url: 'https://example.com', image: stickerCat },
     { id: 'sp2', label: 'LINEAR', url: 'https://linear.app' },
-    // Deliberately not filling every floor slot: the gaps are the pitch.
-    { id: 'sp3', where: 'floor', slot: 0, label: 'Cat', url: 'https://example.com', image: stickerCat },
-    { id: 'sp4', where: 'floor', slot: 5, label: 'LINEAR', url: 'https://linear.app' },
-    { id: 'sp5', where: 'floor', slot: 1, label: 'Cat', url: 'https://example.com', image: stickerCat },
   ],
   setSponsors: (sponsors) => set({ sponsors }),
+
+  /**
+   * The floor grid. Seeded part-filled on purpose: the gaps are the pitch, and
+   * a user who has never seen the feature learns what a slot is by seeing one
+   * with something in it next to one without.
+   */
+  floorSlots: defaultFloorSlots().map((sl, i) =>
+    i === 0 || i === 1
+      ? { ...sl, image: stickerCat, label: 'Cat', url: 'https://example.com' }
+      : i === 5
+      ? { ...sl, label: 'LINEAR', url: 'https://linear.app' }
+      : sl,
+  ),
+  slotsVisible: true,
+  selectedSlot: null,
+  setSlotsVisible: (slotsVisible) => set({ slotsVisible }),
+  selectSlot: (selectedSlot) => set({ selectedSlot }),
+  updateSlot: (id, patch) =>
+    set((s) => ({ floorSlots: s.floorSlots.map((sl) => (sl.id === id ? { ...sl, ...patch } : sl)) })),
+  addSlot: () =>
+    set((s) => {
+      const sl = blankSlot(newId('slot'))
+      return { floorSlots: [...s.floorSlots, sl], selectedSlot: sl.id }
+    }),
+  removeSlot: (id) =>
+    set((s) => ({
+      floorSlots: s.floorSlots.filter((sl) => sl.id !== id),
+      selectedSlot: s.selectedSlot === id ? null : s.selectedSlot,
+    })),
 
   deviceId: 'macbook',
   locationId: 'studio',

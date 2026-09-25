@@ -6,6 +6,7 @@ import { Panel, Segmented, Slider, Toggle, Vec3 } from './controls.jsx'
 import FocusPanel from './FocusPanel.jsx'
 import CameraMoves from './CameraMoves.jsx'
 import TitlesPanel from './TitlesPanel.jsx'
+import SlotsPanel from './SlotsPanel.jsx'
 
 function ResetBtn({ group }) {
   const resetGroup = useStudio((s) => s.resetGroup)
@@ -261,6 +262,7 @@ export default function LeftPanel({ onCollapse }) {
 
       <FocusPanel />
       <TitlesPanel />
+      <SlotsPanel />
 
       <Panel title="Transform" right={<ResetBtn group="device" />}>
         <Vec3
