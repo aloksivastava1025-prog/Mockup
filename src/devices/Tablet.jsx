@@ -184,6 +184,7 @@ export default function Tablet({ rootRef, texture, screenMatRef, material, scree
 
             {screen.glow > 0.001 && (
               <pointLight
+            userData={{ screenGlow: true }}
                 position={[0, 0, 120]}
                 intensity={screen.glow * 0.4}
                 distance={0.34}

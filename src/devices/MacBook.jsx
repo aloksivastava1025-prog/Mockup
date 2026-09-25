@@ -478,7 +478,14 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
           {/* Screen spill light. Position is local and scales with the group,
               but intensity and distance are world-space — never scale those. */}
           {screen.glow > 0.001 && (
-            <pointLight position={[0, LD / 2, 9]} intensity={screen.glow * 0.5} distance={0.4} decay={2} color="#cfe2ff" />
+            <pointLight
+              userData={{ screenGlow: true }}
+              position={[0, LD / 2, 9]}
+              intensity={screen.glow * 0.5}
+              distance={0.4}
+              decay={2}
+              color="#cfe2ff"
+            />
           )}
           </group>
         </group>

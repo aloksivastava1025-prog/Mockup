@@ -146,6 +146,7 @@ export default function Monitor({ rootRef, texture, screenMatRef, material, scre
 
           {screen.glow > 0.001 && (
             <pointLight
+            userData={{ screenGlow: true }}
               position={[0, 0, 300]}
               intensity={screen.glow * 1.1}
               distance={0.9}

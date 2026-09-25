@@ -57,6 +57,36 @@ function useFog() {
   }, [scene, fog?.color, fog?.near, fog?.far])
 }
 
+/**
+ * Keep the screen's own light off the floor.
+ *
+ * A display spills light onto the desk in front of it, and that spill is worth
+ * having — but a point light does not know the machine is in the way, so it
+ * shines straight through the body and lays a bright disc on the ground
+ * directly underneath. The device then reads as hovering over a lit patch
+ * rather than standing on a surface, which is exactly what it looked like.
+ *
+ * Shadow-casting would be the physical answer and costs a cube map per device.
+ * Layers cost nothing: the glow lights move to a layer of their own, and
+ * everything except the ground is opted in to it. The camera still draws
+ * everything, because enable() adds a layer rather than replacing layer 0.
+ */
+const GLOW_LAYER = 1
+
+function useScreenGlowLayer() {
+  const { scene } = useThree()
+  const deviceId = useStudio((s) => s.deviceId)
+  const companions = useStudio((s) => s.companions)
+  const lit = useStudio((s) => s.screen.glow > 0.001)
+
+  useEffect(() => {
+    scene.traverse((o) => {
+      if (o.userData?.screenGlow) o.layers.set(GLOW_LAYER)
+      else if (o.isMesh && !o.userData?.ground) o.layers.enable(GLOW_LAYER)
+    })
+  }, [scene, deviceId, companions, lit])
+}
+
 function useGradientBackground() {
   const { scene } = useThree()
   const background = useStudio((s) => s.background)
@@ -260,19 +290,29 @@ function Ground() {
       {groundVisible && !surface.geometry && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.0005, 0]} receiveShadow userData={{ ground: true }}>
           <planeGeometry args={[GROUND, GROUND]} />
-          {kind === 'mirror' ? (
+          {surface.reflect ? (
+            /*
+             * A polished surface shows what is standing on it, and on a dark
+             * one that reflection is the only thing holding the device down.
+             * A contact shadow is a dark patch, which says nothing against an
+             * almost-black floor — the machine ends up looking like it is
+             * hovering over its own glow. The reference photo anchors its
+             * monitor the same way: reflection, not shade.
+             */
             <MeshReflectorMaterial
+              key={kind}
+              map={map}
               resolution={512}
-              mixBlur={1}
-              mixStrength={12}
-              blur={[320, 90]}
-              roughness={0.85}
+              mixBlur={surface.reflect.mixBlur}
+              mixStrength={surface.reflect.strength}
+              blur={surface.reflect.blur}
+              roughness={surface.roughness}
               depthScale={1.1}
               minDepthThreshold={0.4}
               maxDepthThreshold={1.3}
-              color={background.groundColor ?? surface.color}
-              metalness={0.5}
-              mirror={0.35}
+              color={map ? background.groundColor ?? '#ffffff' : background.groundColor ?? surface.color}
+              metalness={surface.metalness}
+              mirror={surface.reflect.mirror}
             />
           ) : (
             <meshStandardMaterial
@@ -424,6 +464,7 @@ function Rig() {
 
   useGradientBackground()
   useFog()
+  useScreenGlowLayer()
 
   // Position everything for a given timeline time. Used by both the live
   // viewport loop and the frame-accurate exporter.

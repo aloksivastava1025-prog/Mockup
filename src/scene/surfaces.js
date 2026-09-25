@@ -319,10 +319,19 @@ export const SURFACES = {
   wood: { label: 'Wood', color: '#ffffff', roughness: 0.55, metalness: 0, tile: 0.9 },
   // Semi-gloss on purpose: the reference desk carries a soft reflection of
   // whatever is standing on it, and at matte roughness that disappears.
-  walnut: { label: 'Walnut', color: '#ffffff', roughness: 0.32, metalness: 0.1, tile: 1.5 },
+  // `reflect` turns the plane into a mirror-backed material. Walnut is
+  // polished and dark, and on a dark surface the reflection is what tells you
+  // the device is standing on it rather than over it.
+  walnut: {
+    label: 'Walnut', color: '#ffffff', roughness: 0.32, metalness: 0.1, tile: 1.5,
+    reflect: { strength: 4, blur: [300, 90], mixBlur: 1.2, mirror: 0.35 },
+  },
   concrete: { label: 'Concrete', color: '#ffffff', roughness: 0.85, metalness: 0, tile: 1.4 },
   marble: { label: 'Marble', color: '#ffffff', roughness: 0.28, metalness: 0.05, tile: 1.6 },
-  mirror: { label: 'Mirror', color: '#0d0f14', roughness: 0.85, metalness: 0.5, tile: 1 },
+  mirror: {
+    label: 'Mirror', color: '#0d0f14', roughness: 0.85, metalness: 0.5, tile: 1,
+    reflect: { strength: 12, blur: [320, 90], mixBlur: 1, mirror: 0.35 },
+  },
   rock: { label: 'Rock', color: '#1d1a18', roughness: 1, metalness: 0.04, tile: 1, geometry: 'rock' },
 }
 

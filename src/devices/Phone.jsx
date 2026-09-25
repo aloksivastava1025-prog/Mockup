@@ -185,6 +185,7 @@ export default function Phone({ rootRef, texture, screenMatRef, material, screen
             scaled into these millimetre units. */}
         {screen.glow > 0.001 && (
           <pointLight
+            userData={{ screenGlow: true }}
             position={[0, H / 2, 60]}
             intensity={screen.glow * 0.35}
             distance={0.3}
