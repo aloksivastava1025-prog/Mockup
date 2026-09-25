@@ -280,6 +280,22 @@ select:focus {
 }
 .text-input:focus { border-color: var(--accent); outline: none; }
 
+/* ---------- capture a website ---------- */
+.capture { display: grid; gap: 6px; width: 320px; max-width: 80%; }
+.capture-row { display: flex; gap: 6px; align-items: center; }
+.capture-row .text-input { flex: 1 1 auto; height: 28px; }
+.capture-row .btn { flex: 0 0 auto; }
+/* Segment buttons stretch to fill their row by default, which clips "10s" to
+   an ellipsis in a strip this narrow. Here they size to their own text. */
+.capture-row .seg button { flex: 0 0 auto; padding: 0 9px; }
+.capture-or {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 /* ---------- focus areas ---------- */
 .focus-box {
   position: relative;

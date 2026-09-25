@@ -6,6 +6,7 @@ import Timeline from './ui/Timeline.jsx'
 import { useStudio } from './store/useStudio.js'
 import { isSupported, loadSource } from './media/loadSource.js'
 import { downloadProject, openProjectFile, readAutosave, startAutosave } from './project/project.js'
+import CaptureBar from './ui/CaptureBar.jsx'
 
 const isProjectFile = (file) => file.name.endsWith('.json')
 
@@ -188,6 +189,8 @@ export default function App() {
             <button className="btn primary" style={{ pointerEvents: 'auto' }} onClick={() => inputRef.current?.click()}>
               Choose file
             </button>
+            <div className="capture-or">or record a website</div>
+            <CaptureBar onFile={accept} />
             {restorable && (
               <button
                 className="btn"
