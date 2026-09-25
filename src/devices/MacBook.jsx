@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import * as THREE from 'three'
 import { RoundedBox } from '@react-three/drei'
+import { cornerMask } from './screenMask.js'
 
 /**
  * MacBook Pro 16" style laptop.
@@ -274,6 +275,8 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
     [capTex, labelTex, grillTex, keyGeometries],
   )
 
+  const mask = useMemo(() => cornerMask(SCREEN_W / SCREEN_H, 0.012), [])
+
   const screenColor = useMemo(() => {
     const b = screen.brightness
     return new THREE.Color(b, b, b)
@@ -421,9 +424,25 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
           <mesh position={[0, LD / 2 - 0.06, LH / 2 - 0.012]}>
             <planeGeometry args={[SCREEN_W, SCREEN_H]} />
             {texture ? (
-              <meshBasicMaterial ref={screenMatRef} map={texture} color={screenColor} toneMapped={false} />
+              <meshBasicMaterial
+                ref={screenMatRef}
+                map={texture}
+                alphaMap={mask}
+                transparent
+                depthWrite={false}
+                color={screenColor}
+                toneMapped={false}
+              />
             ) : (
-              <meshStandardMaterial color="#12151c" roughness={0.35} emissive="#1b2434" emissiveIntensity={0.5} />
+              <meshStandardMaterial
+                color="#12151c"
+                alphaMap={mask}
+                transparent
+                depthWrite={false}
+                roughness={0.35}
+                emissive="#1b2434"
+                emissiveIntensity={0.5}
+              />
             )}
           </mesh>
 

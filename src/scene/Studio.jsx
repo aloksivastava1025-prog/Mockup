@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, Environment, Lightformer, MeshReflectorMaterial, OrbitControls } from '@react-three/drei'
 import { useStudio } from '../store/useStudio.js'
-import { DEVICES } from '../devices/index.js'
+import { DEFAULT_DEVICE, DEVICES } from '../devices/index.js'
 import { sampleAt } from '../anim/interpolate.js'
 import { createScreenSource } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
@@ -12,7 +12,8 @@ import Props from './Props.jsx'
 
 const DEG = Math.PI / 180
 
-// How far Adapt may deform a device before we decide the pairing is nonsense.
+// Default limits on how far Adapt may deform a device; a device meta can
+// narrow them with its own adaptRange.
 const ADAPT_MIN = 0.6
 const ADAPT_MAX = 1.7
 
@@ -273,7 +274,7 @@ function Rig() {
   // keyframed animation; orbit controls must stand down or they fight it.
   const timelineOwnsCamera = isPlaying || (hasAnimation && !previewLive)
 
-  const device = DEVICES[deviceId] ?? DEVICES.laptop
+  const device = DEVICES[deviceId] ?? DEFAULT_DEVICE
   const adaptScreen = useStudio((s) => s.adaptScreen)
   const background = useStudio((s) => s.background)
 
@@ -286,7 +287,10 @@ function Rig() {
   const wanted = adaptScreen && sourceAspect ? device.screenAspect / sourceAspect : 1
   // Either adapt fully or not at all — a half-applied clamp would deform the
   // device without ever matching the source, which is the worst of both.
-  const adapted = !!sourceAspect && adaptScreen && wanted >= ADAPT_MIN && wanted <= ADAPT_MAX
+  // How far this particular body may be stretched before it stops reading as
+  // itself. A laptop takes a lot; a tablet almost none.
+  const [adaptMin, adaptMax] = device.adaptRange ?? [ADAPT_MIN, ADAPT_MAX]
+  const adapted = !!sourceAspect && adaptScreen && wanted >= adaptMin && wanted <= adaptMax
   const aspectScale = adapted ? wanted : 1
   const effectiveAspect = adapted ? sourceAspect : device.screenAspect
 

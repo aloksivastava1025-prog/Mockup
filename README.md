@@ -183,6 +183,18 @@ Primary path is **WebCodecs** (`VideoEncoder`, H.264) muxed to MP4 with
 without WebCodecs fall back to a real-time `MediaRecorder` capture of the canvas
 and produce WebM instead. Exports are video-only (no audio track).
 
+## Devices
+
+MacBook 16", Tablet 11" and Display 32". A phone is built (`Phone.jsx`) but
+held out of the picker until it has had a design pass.
+
+Every display has rounded corners, cut with an alpha map rather than geometry —
+the screen is a single quad, and a hard rectangle reads as a render.
+
+Each device declares its own `adaptRange`: how far Adapt may stretch that body
+before it stops looking like itself. A laptop takes a lot of reshaping, a
+tablet almost none, so one global clamp was wrong.
+
 ## Adding another device
 
 Devices live in `src/devices/`. A device is a component accepting
