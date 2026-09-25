@@ -5,6 +5,7 @@ import { ContactShadows, Environment, Lightformer, MeshReflectorMaterial, OrbitC
 import { useStudio } from '../store/useStudio.js'
 import { DEFAULT_DEVICE, DEVICES } from '../devices/index.js'
 import { sampleAt } from '../anim/interpolate.js'
+import { shakeAt } from '../anim/shake.js'
 import { createScreenSource } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
 import { SURFACES, SURFACE_GEOMETRY, surfaceTexture } from './surfaces.js'
@@ -543,14 +544,28 @@ function Rig() {
       }
 
       if (driveCamera) {
+        // Shake is added after the timeline has had its say, so it rides on
+        // top of the move instead of being part of it.
+        const sh = shakeAt(time, s.shake)
         camera.position.set(...eff.camera.position)
         target.set(...eff.camera.target)
+        let fov = eff.camera.fov
+        if (sh) {
+          camera.position.x += sh.pos[0]
+          camera.position.y += sh.pos[1]
+          camera.position.z += sh.pos[2]
+          target.x += sh.aim[0]
+          target.y += sh.aim[1]
+          fov += sh.fov
+        }
         camera.lookAt(target)
-        if (camera.fov !== eff.camera.fov) {
-          camera.fov = eff.camera.fov
+        if (camera.fov !== fov) {
+          camera.fov = fov
           camera.updateProjectionMatrix()
         }
-        if (controlsRef.current) controlsRef.current.target.copy(target)
+        // The controls track the un-shaken aim, or a drag would inherit the
+        // wobble and the shake would slowly walk the camera off the subject.
+        if (controlsRef.current) controlsRef.current.target.set(...eff.camera.target)
       }
 
       // A backdrop photo must keep its aspect whatever shape the output is —

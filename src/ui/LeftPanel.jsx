@@ -32,6 +32,8 @@ export default function LeftPanel({ onCollapse }) {
   const setFloat = useStudio((s) => s.setFloat)
   const orbitEnabled = useStudio((s) => s.orbitEnabled)
   const setOrbitEnabled = useStudio((s) => s.setOrbitEnabled)
+  const shake = useStudio((s) => s.shake)
+  const setShake = useStudio((s) => s.setShake)
   const adaptScreen = useStudio((s) => s.adaptScreen)
   const setAdaptScreen = useStudio((s) => s.setAdaptScreen)
   const source = useStudio((s) => s.source)
@@ -319,6 +321,32 @@ export default function LeftPanel({ onCollapse }) {
           precision={1}
           onChange={(v) => update('camera', { fov: v })}
         />
+        <Slider
+          label="Shake"
+          value={shake.amount}
+          min={0}
+          max={2}
+          step={0.02}
+          precision={2}
+          onChange={(v) => setShake({ amount: v }, 'amount')}
+        />
+        {shake.amount > 0 && (
+          <Slider
+            label="Shake speed"
+            value={shake.speed}
+            min={0.2}
+            max={4}
+            step={0.05}
+            precision={2}
+            onChange={(v) => setShake({ speed: v }, 'speed')}
+          />
+        )}
+        {shake.amount > 0 && (
+          <p className="hint">
+            Handheld wobble layered over the move, not baked into it — retime the shot and it
+            follows. It is the same every render, so a re-export matches.
+          </p>
+        )}
         <p className="hint">
           Low FOV = telephoto, flatter and more product-like. High FOV = wide angle, more dramatic perspective.
         </p>

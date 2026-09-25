@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/simplify.test.mjs && node tests/easing.test.mjs"
+    "test": "node tests/simplify.test.mjs && node tests/easing.test.mjs && node tests/shake.test.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.3",

@@ -104,6 +104,11 @@ const defaults = {
    */
   render: { blurSamples: 1, depth: 0 },
   /**
+   * Handheld shake, layered over the timeline rather than baked into it, so it
+   * survives retiming and can be dialled out without touching a keyframe.
+   */
+  shake: { amount: 0, speed: 1 },
+  /**
    * Optical effects, as a stack you add to rather than a fixed set of
    * sliders — most shots want none of them and the two that do want one each.
    */
@@ -169,6 +174,7 @@ export const DOC_KEYS = [
   'focus',
   'titles',
   'render',
+  'shake',
   'effects',
   'adaptScreen',
   'keyframes',
@@ -278,6 +284,9 @@ export const useStudio = create((set, get) => ({
 
   removeEffect: (id) =>
     set((s) => ({ ...historyPatch(s, null), effects: s.effects.filter((e) => e.id !== id) })),
+
+  setShake: (patch, key = null) =>
+    set((s) => ({ ...historyPatch(s, key && `shake.${key}`), shake: { ...s.shake, ...patch } })),
 
   setRender: (patch, key = null) =>
     set((s) => ({ ...historyPatch(s, key && `render.${key}`), render: { ...s.render, ...patch } })),
