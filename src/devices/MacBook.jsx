@@ -422,7 +422,7 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
           </RoundedBox>
 
           {/* display */}
-          <mesh position={[0, LD / 2 - 0.06, LH / 2 - 0.012]}>
+          <mesh position={[0, LD / 2 - 0.06, LH / 2 - 0.012]} userData={{ screenSurface: true }}>
             <planeGeometry args={[SCREEN_W, SCREEN_H]} />
             {texture ? (
               <meshBasicMaterial

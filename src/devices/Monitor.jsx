@@ -106,7 +106,7 @@ export default function Monitor({ rootRef, texture, screenMatRef, material, scre
           </RoundedBox>
 
           {/* display */}
-          <mesh position={[0, 0, PANEL_D / 2 + Z_SCREEN]}>
+          <mesh position={[0, 0, PANEL_D / 2 + Z_SCREEN]} userData={{ screenSurface: true }}>
             <planeGeometry args={[SCREEN_W, SCREEN_H]} />
             {texture ? (
               <meshBasicMaterial

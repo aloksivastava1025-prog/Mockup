@@ -95,7 +95,7 @@ export default function Phone({ rootRef, texture, screenMatRef, material, screen
         </RoundedBox>
 
         {/* display */}
-        <mesh position={[0, H / 2, D / 2 + Z_SCREEN]}>
+        <mesh position={[0, H / 2, D / 2 + Z_SCREEN]} userData={{ screenSurface: true }}>
           <planeGeometry args={[SCREEN_W, SCREEN_H]} />
           {texture ? (
             <meshBasicMaterial

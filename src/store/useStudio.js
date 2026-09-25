@@ -85,6 +85,12 @@ const defaults = {
   companions: [],
   /** Clear space between neighbouring devices in the row, in world units. */
   spacing: 0.05,
+  /**
+   * Regions of the screen content worth looking at, in the source's own
+   * coordinates: 0..1 across, y from the top. A camera move is generated from
+   * them rather than the areas being animated themselves.
+   */
+  focus: { areas: [], hold: 1.4, travel: 1.6, open: 1.0 },
 }
 
 const clone = (v) => JSON.parse(JSON.stringify(v))
@@ -132,6 +138,7 @@ export const DOC_KEYS = [
   'deviceId',
   'companions',
   'spacing',
+  'focus',
   'adaptScreen',
   'keyframes',
   'duration',
@@ -225,6 +232,27 @@ export const useStudio = create((set, get) => ({
       }
       return { ...historyPatch(s, null), companions: arrange(list, s.deviceId, s.spacing) }
     }),
+
+  addFocusArea: (rect) =>
+    set((s) => ({
+      ...historyPatch(s, null),
+      focus: {
+        ...s.focus,
+        areas: [...s.focus.areas, { id: `fa_${Date.now().toString(36)}`, ...rect }],
+      },
+    })),
+
+  updateFocus: (patch, key = null) =>
+    set((s) => ({ ...historyPatch(s, key && `focus.${key}`), focus: { ...s.focus, ...patch } })),
+
+  removeFocusArea: (id) =>
+    set((s) => ({
+      ...historyPatch(s, null),
+      focus: { ...s.focus, areas: s.focus.areas.filter((a) => a.id !== id) },
+    })),
+
+  clearFocusAreas: () =>
+    set((s) => ({ ...historyPatch(s, null), focus: { ...s.focus, areas: [] } })),
 
   updateCompanion: (id, patch, key = null) =>
     set((s) => {

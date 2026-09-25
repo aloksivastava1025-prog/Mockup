@@ -2,6 +2,7 @@ import React from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { DEVICE_LIST, COMING_SOON, DEVICES } from '../devices/index.js'
 import { Panel, Segmented, Slider, Toggle, Vec3 } from './controls.jsx'
+import FocusPanel from './FocusPanel.jsx'
 
 function ResetBtn({ group }) {
   const resetGroup = useStudio((s) => s.resetGroup)
@@ -243,6 +244,8 @@ export default function LeftPanel({ onCollapse }) {
         <Slider label="Brightness" value={screen.brightness} min={0.2} max={2} step={0.01} onChange={(v) => update('screen', { brightness: v })} />
         <Slider label="Glow" value={screen.glow} min={0} max={2} step={0.01} onChange={(v) => update('screen', { glow: v })} />
       </Panel>
+
+      <FocusPanel />
 
       <Panel title="Transform" right={<ResetBtn group="device" />}>
         <Vec3

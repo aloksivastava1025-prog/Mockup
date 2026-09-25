@@ -127,7 +127,7 @@ export default function Tablet({ rootRef, texture, screenMatRef, material, scree
             </RoundedBox>
 
             {/* display */}
-            <mesh position={[0, 0, D / 2 + Z_SCREEN]}>
+            <mesh position={[0, 0, D / 2 + Z_SCREEN]} userData={{ screenSurface: true }}>
               <planeGeometry args={[SCREEN_W, SCREEN_H]} />
               {texture ? (
                 <meshBasicMaterial
