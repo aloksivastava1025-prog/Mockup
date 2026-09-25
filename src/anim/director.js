@@ -1,5 +1,6 @@
 import { poseForRect, poseForWhole } from '../scene/focus.js'
 import { useStudio } from '../store/useStudio.js'
+import { SEQUENCE_RENDER, buildSequence } from './storyboard.js'
 
 const DEG = Math.PI / 180
 
@@ -82,7 +83,13 @@ const STYLES = {
   },
 }
 
-export const FILM_STYLES = Object.entries(STYLES).map(([id, s]) => ({ id, label: s.label }))
+export const FILM_STYLES = [
+  { id: 'sequence', label: 'Sequence' },
+  ...Object.entries(STYLES).map(([id, s]) => ({ id, label: s.label })),
+]
+
+/** Styles that choreograph the object itself and do not use focus areas. */
+export const IGNORES_AREAS = new Set(['sequence'])
 
 /**
  * Lays out the beats, then scales them to the length asked for.
@@ -108,6 +115,17 @@ function beatPlan(style, areaCount) {
 }
 
 export function buildFilm({ areas = [], style = 'cinematic', seconds = 20, aspect = 16 / 9 } = {}) {
+  // The sequence is storyboarded shot by shot rather than assembled from
+  // beats, so it takes its own path. It ignores focus areas by design: its
+  // subject is the object, not the page on it.
+  if (style === 'sequence') {
+    return {
+      keyframes: buildSequence({ seconds, screen: useStudio.getState().screen }),
+      duration: seconds,
+      render: { ...SEQUENCE_RENDER },
+    }
+  }
+
   const { S, beats } = beatPlan(style, areas.length)
 
   const wide = poseForWhole({ aspect })

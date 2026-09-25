@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { Panel, Segmented, Slider } from './controls.jsx'
-import { FILM_STYLES, buildFilm } from '../anim/director.js'
+import { FILM_STYLES, IGNORES_AREAS, buildFilm } from '../anim/director.js'
 import { aspectRatio } from '../export/exportVideo.js'
 
 /**
@@ -143,16 +143,17 @@ export default function FocusPanel() {
       <Segmented
         label="Length"
         value={focus.seconds}
-        options={[10, 20, 30].map((n) => ({ value: n, label: `${n}s` }))}
+        options={[20, 30, 40, 60].map((n) => ({ value: n, label: `${n}s` }))}
         onChange={(v) => updateFocus({ seconds: v })}
       />
       <button className="btn primary wide" onClick={build}>
         Build film
       </button>
       <p className="hint">
-        Writes the whole timeline: opens wide, visits each area, throws to a contrasting angle
-        between looks, then pulls out to a hero. Sets motion blur and depth of field to match the
-        style — then just export.
+        {IGNORES_AREAS.has(focus.style)
+          ? 'A storyboarded ten-shot arc — far, reveal, power, orbit, lid open, screen, throw, orbit, detail, hero. The machine turns, lifts and opens against the camera. It performs the object, so it ignores the areas above.'
+          : 'Writes the whole timeline: opens wide, visits each area, throws to a contrasting angle between looks, then pulls out to a hero.'}
+        {' '}Sets motion blur and depth of field to match, then just export.
       </p>
       {focus.areas.length > 0 && (
         <button className="btn wide" onClick={clearFocusAreas}>

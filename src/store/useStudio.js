@@ -90,7 +90,7 @@ const defaults = {
    * coordinates: 0..1 across, y from the top. A camera move is generated from
    * them rather than the areas being animated themselves.
    */
-  focus: { areas: [], style: 'cinematic', seconds: 20 },
+  focus: { areas: [], style: 'sequence', seconds: 40 },
   /**
    * Text over the shot. Each title carries its own in-point and duration
    * rather than being keyframed, because a caption is a thing that appears
