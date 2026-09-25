@@ -1,3 +1,4 @@
+import { LOCATIONS } from '../scene/locations.js'
 import { useStudio } from '../store/useStudio.js'
 
 const snap = (over = {}) => {
@@ -21,12 +22,24 @@ const DEG = Math.PI / 180
 /**
  * A shot is framed by orbiting the camera around a target: azimuth/elevation in
  * degrees and distance in metres. Far easier to reason about than raw XYZ.
+ *
+ * `fy` floats the device off the surface and `rz` rolls it (the Tilt control);
+ * both default to nothing, so every shot written before they existed is
+ * unchanged. Note that `ty` — the height the camera looks at — is authored
+ * separately rather than derived from `fy`: a rising device usually wants the
+ * camera to lag or lead it slightly, and tying the two together removes exactly
+ * the control that makes the lift read.
  */
 const shot = (time, o, fade = 0) => {
   const el = o.el * DEG
   const az = o.az * DEG
   return kf(time, {
-    device: { position: [0, 0, 0], rotation: [0, o.ry, 0], lidAngle: o.lid, scale: 1 },
+    device: {
+      position: [0, o.fy ?? 0, 0],
+      rotation: [o.rx ?? 0, o.ry, o.rz ?? 0],
+      lidAngle: o.lid,
+      scale: o.sc ?? 1,
+    },
     camera: {
       position: [
         +(o.d * Math.cos(el) * Math.sin(az)).toFixed(4),
@@ -50,7 +63,8 @@ const shot = (time, o, fade = 0) => {
 }
 
 const SHOT_DEFAULTS = {
-  ry: 0, lid: 102, az: 0, el: 16, d: 0.8, fov: 30, ty: 0.115,
+  ry: 0, rx: 0, rz: 0, fy: 0, sc: 1,
+  lid: 102, az: 0, el: 16, d: 0.8, fov: 30, ty: 0.115,
   zoom: 1, ox: 0, oy: 0, b: 1.05, g: 0.38, fit: 'contain',
 }
 const norm = (o) => ({ ...SHOT_DEFAULTS, ...o })
@@ -260,7 +274,69 @@ const HERO_40 = () => [
   shot(40,   { ry: -12, lid: 104, az: -22, el: 22, d: 0.60, fov: 28, ty: 0.115 }, 1),
 ]
 
+/** The Ridge location, with the body finished for a hero rather than a preview. */
+const RIDGE_LOOK = {
+  locationId: 'ridge',
+  lighting: LOCATIONS.ridge.lighting,
+  background: LOCATIONS.ridge.background,
+  material: {
+    ...LOCATIONS.ridge.material,
+    bodyRoughness: 0.2,
+    bodyMetalness: 0.88,
+    bezelColor: '#0a0a0c',
+    screenReflectivity: 0.12,
+  },
+}
+
+/**
+ * 30s liftoff, one unbroken camera move.
+ *
+ *   0-6   eye level with the stone, lid shut, a slow creep in
+ *   6-12  it leaves the ledge; the camera stays low and cranes to follow
+ *   12-20 the lid opens as it keeps climbing
+ *   20-27 it rolls over as it rises, the camera lifting with it
+ *   27-30 dead still, fading out
+ *
+ * Two values are deliberately repeated rather than interpolated. The lid holds
+ * at exactly 2 through every keyframe before its beat, and the float holds at
+ * exactly 0 through the opening creep, because a Catmull-Rom tangent reaches
+ * backwards across neighbours — without the flat hold the machine cracks its
+ * lid, and lifts off the rock, several seconds before it should.
+ */
+const LIFTOFF_30 = () => [
+  // --- ground level, shut ---
+  shot(0,     { ry: -26, lid: 2, fy: 0, az: 54, el: 3, d: 0.64, fov: 28, ty: 0.020, b: 0.5, g: 0 }, 1),
+  shot(1.8,   { ry: -26, lid: 2, fy: 0, az: 49, el: 3, d: 0.57, fov: 28, ty: 0.020, b: 0.5, g: 0 }, 0),
+  shot(4,     { ry: -25, lid: 2, fy: 0, az: 43, el: 4, d: 0.51, fov: 28, ty: 0.022, b: 0.5, g: 0 }, 0),
+  shot(6,     { ry: -24, lid: 2, fy: 0, az: 38, el: 5, d: 0.48, fov: 28, ty: 0.024, b: 0.5, g: 0 }, 0),
+  // --- liftoff, still shut ---
+  shot(8.5,   { ry: -23, lid: 2, fy: 0.07, az: 34, el: 4, d: 0.52, fov: 29, ty: 0.072, b: 0.52, g: 0.02 }, 0),
+  shot(12,    { ry: -22, lid: 2, fy: 0.18, az: 29, el: 6, d: 0.60, fov: 29, ty: 0.176, b: 0.55, g: 0.04 }, 0),
+  // --- the open, on the way up ---
+  shot(15,    { ry: -20, lid: 34,  fy: 0.25, az: 24, el: 9,  d: 0.66, fov: 29, ty: 0.252, b: 0.72, g: 0.14 }, 0),
+  shot(17.5,  { ry: -18, lid: 78,  fy: 0.30, az: 19, el: 12, d: 0.72, fov: 30, ty: 0.306, b: 0.90, g: 0.26 }, 0),
+  shot(20,    { ry: -16, lid: 104, fy: 0.34, az: 14, el: 15, d: 0.78, fov: 30, ty: 0.350, b: 1.05, g: 0.38 }, 0),
+  // --- it rolls over as it climbs; the camera falls back to show the ledge it
+  //     left. Framing the target below the machine puts it in the upper third
+  //     with the stone underneath it, which is the point of the whole move.
+  shot(23,    { ry: -12, lid: 104, rz: -8,  rx: 3, fy: 0.42, az: 4,   el: 18, d: 0.86, fov: 30, ty: 0.420 }, 0),
+  shot(27,    { ry: -6,  lid: 104, rz: -20, rx: 7, fy: 0.52, az: -12, el: 20, d: 1.00, fov: 31, ty: 0.455 }, 0),
+  // --- held still while the frame fades out ---
+  shot(28.4,  { ry: -4,  lid: 104, rz: -24, rx: 8, fy: 0.55, az: -17, el: 21, d: 1.12, fov: 31, ty: 0.460 }, 0),
+  shot(30,    { ry: -4,  lid: 104, rz: -24, rx: 8, fy: 0.55, az: -17, el: 21, d: 1.12, fov: 31, ty: 0.460 }, 1),
+]
+
 export const PRESETS = [
+  {
+    id: 'liftoff',
+    label: 'Liftoff 30s',
+    duration: 30,
+    look: RIDGE_LOOK,
+    // The whole piece is the lid opening; on a device without one it is a
+    // static hover, so the preset picks the machine it was written for.
+    requires: 'macbook',
+    build: () => LIFTOFF_30(),
+  },
   {
     id: 'hero40',
     label: 'Hero film 40s',
@@ -349,12 +425,14 @@ export function applyPreset(id) {
   const s = useStudio.getState()
 
   useStudio.getState().commit()
+  if (preset.requires && s.deviceId !== preset.requires) useStudio.getState().setDevice(preset.requires)
   useStudio.setState({
     keyframes,
     playhead: 0,
     previewLive: false,
     ...(look
       ? {
+          ...(look.locationId ? { locationId: look.locationId } : {}),
           lighting: { ...s.lighting, ...look.lighting },
           material: { ...s.material, ...look.material },
           background: { ...s.background, ...look.background },
