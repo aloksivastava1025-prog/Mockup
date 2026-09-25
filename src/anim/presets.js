@@ -29,11 +29,17 @@ const DEG = Math.PI / 180
  * separately rather than derived from `fy`: a rising device usually wants the
  * camera to lag or lead it slightly, and tying the two together removes exactly
  * the control that makes the lift read.
+ *
+ * `lin` plays the segment that *starts* at this shot straight instead of on a
+ * spline. Authored motion normally wants the spline, but an impact does not:
+ * a Catmull-Rom arriving at the ground carries its velocity through the
+ * keyframe and dips the device below the surface before coming back, and the
+ * one thing a landing must do is stop dead.
  */
 const shot = (time, o, fade = 0) => {
   const el = o.el * DEG
   const az = o.az * DEG
-  return kf(time, {
+  const key = kf(time, {
     device: {
       position: [0, o.fy ?? 0, 0],
       rotation: [o.rx ?? 0, o.ry, o.rz ?? 0],
@@ -60,6 +66,8 @@ const shot = (time, o, fade = 0) => {
     },
     post: { fade, fadeColor: '#000000' },
   })
+  if (o.lin) key.ease = 'linear'
+  return key
 }
 
 const SHOT_DEFAULTS = {
@@ -334,7 +342,81 @@ const LIFTOFF_30 = () => [
   shot(30,    { ry: -4,  lid: 104, rz: -24, rx: 8, fy: 0.55, az: -17, el: 21, d: 1.45, fov: 31, ty: 0.505 }, 1),
 ]
 
+/**
+ * 20s drop. The camera sits on the stone and never leaves it.
+ *
+ *   0-3.4    it hangs high against the sky, nothing else in frame
+ *   3.4-5.2  the fall
+ *   5.2      impact, a jolt through the lens and two diminishing bounces
+ *   6-8.5    settled, still shut
+ *   8.5-11.4 the lid whips open past its stop and rocks back
+ *   11.4-18  in and around to the hero
+ *   18-20    held, fading out
+ *
+ * The fall is authored on a gravity curve -- each keyframe sits at
+ * h(1 - u^2) for its share of the drop -- and every keyframe through the fall,
+ * the impact and the bounces is marked `lin`. The spline is wrong for all
+ * three: it would ease the machine into the ground rather than accelerate it,
+ * carry its speed straight through the landing and sink it below the surface,
+ * and round the bounce contacts into a wobble. Straight segments through a
+ * curve of poses give the acceleration without any of that.
+ *
+ * The lid is the opposite case and stays on the spline. Overshooting to 112
+ * and settling back through 99 and 106 lets Catmull-Rom damp the whip for
+ * free, which is the one place in the piece where a bulge is the point.
+ *
+ * Nothing shows the ground until the last half second of the fall: the camera
+ * starts pitched up at the sky and tilts down as the machine drops into it,
+ * so the ledge it is about to hit only arrives in frame just before it does.
+ */
+const DROP_20 = () => [
+  // --- hanging ---
+  shot(0,    { ry: -52, rx: -10, rz: 6, lid: 2, fy: 1.450, az: 44, el: -37, d: 1.90, fov: 34, ty: 1.300, b: 0.5, g: 0 }, 1),
+  shot(1.5,  { ry: -50, rx: -10, rz: 6, lid: 2, fy: 1.437, az: 43, el: -36, d: 1.88, fov: 34, ty: 1.280, b: 0.5, g: 0 }, 0),
+  shot(3.4,  { ry: -48, rx: -9,  rz: 5, lid: 2, fy: 1.420, az: 42, el: -37, d: 1.80, fov: 34, ty: 1.240, b: 0.5, g: 0, lin: true }, 0),
+  // --- the fall, on h(1 - u^2). The camera closes as it comes down, so the
+  //     machine grows through the drop instead of staying a speck on impact.
+  shot(3.9,  { ry: -44, rx: -8,  rz: 4, lid: 2, fy: 1.310, az: 41, el: -36, d: 1.70, fov: 34, ty: 1.160, b: 0.5, g: 0, lin: true }, 0),
+  shot(4.3,  { ry: -40, rx: -6,  rz: 3, lid: 2, fy: 1.065, az: 41, el: -32, d: 1.52, fov: 34, ty: 0.980, b: 0.5, g: 0, lin: true }, 0),
+  shot(4.65, { ry: -35, rx: -4,  rz: 2, lid: 2, fy: 0.736, az: 40, el: -24, d: 1.32, fov: 34, ty: 0.720, b: 0.5, g: 0, lin: true }, 0),
+  shot(4.9,  { ry: -31, rx: -2,  rz: 1, lid: 2, fy: 0.435, az: 39, el: -13, d: 1.15, fov: 34, ty: 0.460, b: 0.5, g: 0, lin: true }, 0),
+  shot(5.08, { ry: -28, rx: -1,  rz: 0, lid: 2, fy: 0.184, az: 39, el: -2,  d: 1.02, fov: 34, ty: 0.240, b: 0.5, g: 0, lin: true }, 0),
+  // --- impact: it stops dead, the lens is knocked, then two bounces ---
+  shot(5.20, { ry: -26, rx: 0, rz: 0,  lid: 2, fy: 0,     az: 38.0, el: 9.0, d: 0.95, fov: 34, ty: 0.130, b: 0.5, g: 0, lin: true }, 0),
+  shot(5.30, { ry: -26, rx: 0, rz: -4, lid: 2, fy: 0.050, az: 39.4, el: 6.8, d: 0.95, fov: 34, ty: 0.104, b: 0.5, g: 0, lin: true }, 0),
+  shot(5.42, { ry: -26, rx: 0, rz: 2,  lid: 2, fy: 0,     az: 36.8, el: 10.7, d: 0.94, fov: 34, ty: 0.150, b: 0.5, g: 0, lin: true }, 0),
+  shot(5.50, { ry: -26, rx: 0, rz: -1, lid: 2, fy: 0.016, az: 38.6, el: 8.4, d: 0.94, fov: 34, ty: 0.119, b: 0.5, g: 0, lin: true }, 0),
+  shot(5.60, { ry: -26, rx: 0, rz: 1,  lid: 2, fy: 0,     az: 37.7, el: 9.5, d: 0.94, fov: 34, ty: 0.136, b: 0.5, g: 0, lin: true }, 0),
+  shot(5.70, { ry: -26, rx: 0, rz: 0,  lid: 2, fy: 0.005, az: 38.1, el: 8.9, d: 0.94, fov: 34, ty: 0.128, b: 0.5, g: 0, lin: true }, 0),
+  shot(5.80, { ry: -26, rx: 0, rz: 0,  lid: 2, fy: 0,     az: 38.0, el: 9.1, d: 0.94, fov: 34, ty: 0.130, b: 0.5, g: 0, lin: true }, 0),
+  // --- settled, still shut. Equal values hold the spline flat. ---
+  shot(6.6,  { ry: -26, lid: 2, fy: 0, az: 37, el: 10, d: 0.97, fov: 33, ty: 0.135, b: 0.5, g: 0 }, 0),
+  shot(8.5,  { ry: -26, lid: 2, fy: 0, az: 35, el: 12, d: 1.01, fov: 33, ty: 0.140, b: 0.5, g: 0 }, 0),
+  // --- the lid whips open and rocks back ---
+  shot(9.1,  { ry: -26, lid: 26,  fy: 0, az: 34, el: 12, d: 1.03, fov: 33, ty: 0.145, b: 0.60, g: 0.06 }, 0),
+  shot(9.6,  { ry: -26, lid: 74,  fy: 0, az: 33, el: 13, d: 1.05, fov: 32, ty: 0.150, b: 0.85, g: 0.20 }, 0),
+  shot(9.95, { ry: -26, lid: 112, fy: 0, az: 32, el: 13, d: 1.06, fov: 32, ty: 0.152, b: 1.00, g: 0.32 }, 0),
+  shot(10.4, { ry: -25, lid: 99,  fy: 0, az: 31, el: 14, d: 1.07, fov: 32, ty: 0.155, b: 1.05, g: 0.36 }, 0),
+  shot(10.9, { ry: -25, lid: 106, fy: 0, az: 30, el: 14, d: 1.09, fov: 32, ty: 0.158, b: 1.05, g: 0.38 }, 0),
+  shot(11.4, { ry: -24, lid: 104, fy: 0, az: 29, el: 15, d: 1.10, fov: 32, ty: 0.160, b: 1.05, g: 0.38 }, 0),
+  // --- in and around to the hero ---
+  shot(13,   { ry: -23, lid: 104, fy: 0, az: 22, el: 15, d: 1.13, fov: 32, ty: 0.165 }, 0),
+  shot(15,   { ry: -21, lid: 104, fy: 0, az: 12, el: 15, d: 1.17, fov: 31, ty: 0.170 }, 0),
+  shot(17,   { ry: -19, lid: 104, fy: 0, az: 1,  el: 16, d: 1.20, fov: 31, ty: 0.175 }, 0),
+  // --- held while the frame fades out ---
+  shot(18,   { ry: -18, lid: 104, fy: 0, az: -4, el: 17, d: 1.21, fov: 31, ty: 0.175 }, 0),
+  shot(20,   { ry: -18, lid: 104, fy: 0, az: -4, el: 17, d: 1.21, fov: 31, ty: 0.175 }, 1),
+]
+
 export const PRESETS = [
+  {
+    id: 'drop',
+    label: 'Drop 20s',
+    duration: 20,
+    look: RIDGE_LOOK,
+    requires: 'macbook',
+    build: () => DROP_20(),
+  },
   {
     id: 'liftoff',
     label: 'Liftoff 30s',
