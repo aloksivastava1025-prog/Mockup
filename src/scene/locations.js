@@ -32,6 +32,14 @@ export const LOCATIONS = {
     lighting: { keyIntensity: 2.3, keyAzimuth: 36, keyElevation: 52, fillIntensity: 0.55, rimIntensity: 0.4, ambient: 0.26, hemi: 0.55, exposure: 1.05, envPreset: 'studio', envIntensity: 0.5, shadowOpacity: 0.3, shadowBlur: 2.0 },
     material: { bodyColor: '#9a9a9e' },
   },
+  ridge: {
+    label: 'Ridge',
+    background: { mode: 'gradient', colorTop: '#c2c8bf', colorBottom: '#d4652a', groundVisible: true, surface: 'rock', groundColor: '#1d1a18', props: false },
+    // Low sun: a shallow key so the beds cast along the stone, deep ambient so
+    // the ledge keeps a silhouette instead of washing out against the sky.
+    lighting: { keyIntensity: 2.5, keyAzimuth: 34, keyElevation: 22, fillIntensity: 0.22, rimIntensity: 1.6, ambient: 0.07, hemi: 0.14, exposure: 1.0, envPreset: 'warm', envIntensity: 0.45, shadows: true, shadowOpacity: 0.55, shadowBlur: 2.6 },
+    material: { bodyColor: '#c6c3bd' },
+  },
   noir: {
     label: 'Noir',
     background: { mode: 'gradient', colorTop: '#1b1f27', colorBottom: '#05070a', groundVisible: true, surface: 'mirror', groundColor: '#0d0f14', props: false },

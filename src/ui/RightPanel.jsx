@@ -114,7 +114,7 @@ export default function RightPanel({ onCollapse }) {
       <Panel title="Location">
         <div className="field stacked">
           <div className="seg">
-            {Object.entries(LOCATIONS).slice(0, 3).map(([id, l]) => (
+            {Object.entries(LOCATIONS).slice(0, 4).map(([id, l]) => (
               <button key={id} className={locationId === id ? 'on' : ''} onClick={() => applyLocation(id, useStudio)}>
                 {l.label}
               </button>
@@ -123,7 +123,7 @@ export default function RightPanel({ onCollapse }) {
         </div>
         <div className="field stacked">
           <div className="seg">
-            {Object.entries(LOCATIONS).slice(3).map(([id, l]) => (
+            {Object.entries(LOCATIONS).slice(4).map(([id, l]) => (
               <button key={id} className={locationId === id ? 'on' : ''} onClick={() => applyLocation(id, useStudio)}>
                 {l.label}
               </button>

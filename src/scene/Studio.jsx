@@ -7,7 +7,7 @@ import { DEFAULT_DEVICE, DEVICES } from '../devices/index.js'
 import { sampleAt } from '../anim/interpolate.js'
 import { createScreenSource } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
-import { SURFACES, surfaceTexture } from './surfaces.js'
+import { SURFACES, rockGeometry, surfaceTexture } from './surfaces.js'
 import Props from './Props.jsx'
 
 const DEG = Math.PI / 180
@@ -183,7 +183,17 @@ function Ground() {
 
   return (
     <>
-      {groundVisible && (
+      {groundVisible && surface.geometry && (
+        <mesh geometry={rockGeometry()} position={[0, -0.0005, 0]} receiveShadow castShadow userData={{ ground: true }}>
+          <meshStandardMaterial
+            color={background.groundColor ?? surface.color}
+            roughness={surface.roughness}
+            metalness={surface.metalness}
+            flatShading
+          />
+        </mesh>
+      )}
+      {groundVisible && !surface.geometry && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.0005, 0]} receiveShadow userData={{ ground: true }}>
           <planeGeometry args={[GROUND, GROUND]} />
           {kind === 'mirror' ? (

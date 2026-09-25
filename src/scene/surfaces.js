@@ -162,12 +162,108 @@ function makeStudio() {
 
 const BUILDERS = { studio: makeStudio, wood: makeWood, concrete: makeConcrete, marble: makeMarble }
 
+/**
+ * A stone ledge for the device to stand on.
+ *
+ * The other surfaces are a texture on a flat plane; this one has to be real
+ * geometry, because what sells a rock is its silhouette against the backdrop —
+ * a photograph of stone painted onto a plane still reads as a floor.
+ *
+ * Built from a cylinder so the top starts genuinely flat: the sides are pushed
+ * around hard to break them up, while the top cap gets only a whisper of
+ * displacement. A device has to sit on this without hovering over a dip or
+ * sinking into a bump, so the plateau stays a plateau.
+ */
+let rockGeo = null
+
+export function rockGeometry() {
+  if (rockGeo) return rockGeo
+
+  const R_TOP = 1.05
+  const R_BOTTOM = 1.35
+  const HEIGHT = 0.95
+  const geo = new THREE.CylinderGeometry(R_TOP, R_BOTTOM, HEIGHT, 96, 26)
+  const pos = geo.attributes.position
+  const v = new THREE.Vector3()
+
+  // Cheap deterministic value noise — enough for stone, and stable between
+  // reloads so a saved shot renders the same rock.
+  const hash = (x, y, z) => {
+    const n = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453
+    return n - Math.floor(n)
+  }
+  const noise = (x, y, z) => {
+    let sum = 0
+    let amp = 1
+    let f = 1.6
+    for (let o = 0; o < 4; o++) {
+      sum += (hash(x * f, y * f, z * f) - 0.5) * amp
+      amp *= 0.5
+      f *= 2.1
+    }
+    return sum
+  }
+
+  /**
+   * Stone this size is bedded, not lumpy: it breaks along near-horizontal beds
+   * and each bed steps in or out from the one below. Displacing by noise alone
+   * gives a potato, so the sides carry a stepped strata term — quantised height
+   * bands, each with its own radial offset — with the noise layered on top to
+   * keep the bands from reading as a lathe turning.
+   */
+  const BEDS = 7
+  const bedOffset = (y) => {
+    const band = Math.floor(((y / HEIGHT) + 0.5) * BEDS)
+    return (hash(band * 3.1, band * 7.7, 1.3) - 0.5) * 0.26
+  }
+
+  const topY = HEIGHT / 2
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i)
+    const onTopCap = v.y > topY - 1e-4
+    const n = noise(v.x, v.y, v.z)
+    const fine = noise(v.x * 5.5, v.y * 5.5, v.z * 5.5)
+
+    if (onTopCap) {
+      // The cap stays exactly planar. A cylinder's cap is a single triangle fan,
+      // so any vertical displacement there turns into radial spokes under flat
+      // shading — and a device needs a level plateau anyway. All the character
+      // goes into the rim, where the fan's outer ring is.
+      const r = Math.hypot(v.x, v.z)
+      if (r > 1e-4) {
+        // ragged rim, but only near the edge
+        const edge = Math.min(1, r / R_TOP)
+        const push = (n * 0.13 + fine * 0.05) * edge * edge
+        v.x += (v.x / r) * push
+        v.z += (v.z / r) * push
+      }
+    } else {
+      const r = Math.hypot(v.x, v.z)
+      if (r > 1e-4) {
+        const push = n * 0.16 + fine * 0.06 + bedOffset(v.y)
+        v.x += (v.x / r) * push
+        v.z += (v.z / r) * push
+      }
+      v.y += n * 0.07 + fine * 0.02
+    }
+    pos.setXYZ(i, v.x, v.y, v.z)
+  }
+
+  geo.scale(1, 1, 0.82)
+  // Sit the plateau on y = 0 so devices stand at the same height as on a plane.
+  geo.translate(0, -topY, 0)
+  geo.computeVertexNormals()
+  rockGeo = geo
+  return geo
+}
+
 export const SURFACES = {
   studio: { label: 'Studio', color: '#ffffff', roughness: 0.92, metalness: 0, tile: 3 },
   wood: { label: 'Wood', color: '#ffffff', roughness: 0.55, metalness: 0, tile: 0.9 },
   concrete: { label: 'Concrete', color: '#ffffff', roughness: 0.85, metalness: 0, tile: 1.4 },
   marble: { label: 'Marble', color: '#ffffff', roughness: 0.28, metalness: 0.05, tile: 1.6 },
   mirror: { label: 'Mirror', color: '#0d0f14', roughness: 0.85, metalness: 0.5, tile: 1 },
+  rock: { label: 'Rock', color: '#1d1a18', roughness: 1, metalness: 0.04, tile: 1, geometry: true },
 }
 
 const cache = new Map()
