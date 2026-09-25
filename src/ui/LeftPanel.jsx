@@ -4,6 +4,7 @@ import { DEVICE_LIST, COMING_SOON, DEVICES } from '../devices/index.js'
 import { adaptFor } from '../devices/adapt.js'
 import { Panel, Segmented, Slider, Toggle, Vec3 } from './controls.jsx'
 import FocusPanel from './FocusPanel.jsx'
+import CameraMoves from './CameraMoves.jsx'
 import TitlesPanel from './TitlesPanel.jsx'
 
 function ResetBtn({ group }) {
@@ -347,6 +348,7 @@ export default function LeftPanel({ onCollapse }) {
             follows. It is the same every render, so a re-export matches.
           </p>
         )}
+        <CameraMoves />
         <p className="hint">
           Low FOV = telephoto, flatter and more product-like. High FOV = wide angle, more dramatic perspective.
         </p>

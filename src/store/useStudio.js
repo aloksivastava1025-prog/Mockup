@@ -466,6 +466,29 @@ export const useStudio = create((set, get) => ({
       return { ...historyPatch(s, `kf.move.${id}`), keyframes: next, playhead: t, previewLive: false }
     }),
 
+  /**
+   * Drop a generated camera move onto the timeline at `keys[0].time`.
+   *
+   * Anything already inside the move's span is replaced rather than merged:
+   * two sets of camera keyframes over the same seconds fight each other, and
+   * the result is neither move. The timeline grows if the move runs past the
+   * end, because silently truncating it is worse than a longer clip.
+   */
+  addCameraMove: (keys) =>
+    set((s) => {
+      if (!keys?.length) return {}
+      const start = keys[0].time
+      const end = keys[keys.length - 1].time
+      const kept = s.keyframes.filter((k) => k.time < start - 1e-3 || k.time > end + 1e-3)
+      return {
+        ...historyPatch(s, null),
+        keyframes: [...kept, ...keys].sort((a, b) => a.time - b.time),
+        duration: Math.max(s.duration, Math.ceil(end * 2) / 2),
+        playhead: start,
+        previewLive: false,
+      }
+    }),
+
   /** How the segment leaving this keyframe is timed. */
   setKeyframeEase: (id, ease) =>
     set((s) => ({
