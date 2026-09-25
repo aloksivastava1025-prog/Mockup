@@ -9,6 +9,7 @@ import { shakeAt } from '../anim/shake.js'
 import { createScreenSource } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
 import { SURFACES, SURFACE_GEOMETRY, surfaceTexture } from './surfaces.js'
+import { FloorSponsors } from './Sponsors.jsx'
 import { backdropTexture } from './backdrops.js'
 import { makeTitleLayer } from './titles.js'
 import { makePostPass } from './post.js'
@@ -481,6 +482,7 @@ function Rig() {
   const device = DEVICES[deviceId] ?? DEFAULT_DEVICE
   const adaptScreen = useStudio((s) => s.adaptScreen)
   const background = useStudio((s) => s.background)
+  const sponsors = useStudio((s) => s.sponsors)
   const companions = useStudio((s) => s.companions)
 
   // With Adapt on the display takes the source's aspect ratio, stretched along
@@ -785,6 +787,7 @@ function Rig() {
     <>
       <Lights />
       <Ground />
+      <FloorSponsors sponsors={sponsors} />
       <Props visible={!!background.props} />
       <FadeOverlay meshRef={fadeMeshRef} matRef={fadeMatRef} />
       <TitleOverlay meshRef={titleMeshRef} matRef={titleMatRef} map={titleLayer.texture} />
@@ -796,6 +799,7 @@ function Rig() {
         material={material}
         screen={screen}
         aspectScale={aspectScale}
+        sponsors={sponsors}
       />
       {companions.map((c) => (
         <Companion

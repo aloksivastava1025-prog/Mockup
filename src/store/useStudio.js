@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { samplesToKeyframes } from '../anim/record.js'
 import { DEFAULT_DEVICE, DEVICE_LIST, DEVICES } from '../devices/index.js'
+import stickerCat from '../assets/sticker-cat.jpg'
 
 // Re-exported so existing callers keep one import; the list itself lives in
 // anim/groups.js, away from anything that pulls in React.
@@ -109,6 +110,11 @@ const defaults = {
    */
   shake: { amount: 0, speed: 1 },
   /**
+   * Sponsor marks shown on the palm rest while composing. Deliberately outside
+   * the exported document: they are placement for us, not part of the user's
+   * shot, and they never reach a rendered frame.
+   */
+  /**
    * Optical effects, as a stack you add to rather than a fixed set of
    * sliders — most shots want none of them and the two that do want one each.
    */
@@ -201,6 +207,18 @@ function historyPatch(s, key) {
 
 export const useStudio = create((set, get) => ({
   ...clone(defaults),
+
+  // Not in DOC_KEYS: a saved project should not carry whoever was sponsoring
+  // the app on the day it was made.
+  sponsors: [
+    { id: 'sp1', label: 'Cat', url: 'https://example.com', image: stickerCat },
+    { id: 'sp2', label: 'LINEAR', url: 'https://linear.app' },
+    // Deliberately not filling every floor slot: the gaps are the pitch.
+    { id: 'sp3', where: 'floor', slot: 0, label: 'Cat', url: 'https://example.com', image: stickerCat },
+    { id: 'sp4', where: 'floor', slot: 5, label: 'LINEAR', url: 'https://linear.app' },
+    { id: 'sp5', where: 'floor', slot: 1, label: 'Cat', url: 'https://example.com', image: stickerCat },
+  ],
+  setSponsors: (sponsors) => set({ sponsors }),
 
   deviceId: 'macbook',
   locationId: 'studio',

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import * as THREE from 'three'
 import { RoundedBox } from '@react-three/drei'
 import { cornerMask } from './screenMask.js'
+import Sponsors from '../scene/Sponsors.jsx'
 
 /**
  * MacBook Pro 16" style laptop.
@@ -253,7 +254,7 @@ function bakeGrill(cols, rows) {
   return tex
 }
 
-export default function MacBook({ rootRef, lidRef, texture, screenMatRef, material, screen, aspectScale = 1 }) {
+export default function MacBook({ rootRef, lidRef, texture, screenMatRef, material, screen, aspectScale = 1, sponsors = [] }) {
   const keys = useMemo(() => buildKeyLayout(), [])
 
   const bounds = useMemo(() => {
@@ -335,6 +336,13 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
             <meshStandardMaterial map={grillTex} color="#4a4a4e" roughness={0.9} metalness={0.1} />
           </mesh>
         ))}
+
+        {/* Sponsor marks on the palm rest, either side of the trackpad. Editor
+            only — see Sponsors.jsx for why they must never reach an export. */}
+        <Sponsors
+          sponsors={sponsors}
+          deck={{ side: 5.9, z: BD / 2 - 2.8, y: BASE_TOP + 0.014 }}
+        />
 
         {/* keys */}
         {keys.map((k, idx) => (
