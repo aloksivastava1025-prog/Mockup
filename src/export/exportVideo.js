@@ -90,17 +90,78 @@ function withRenderSize(width, height, fn) {
   return fn(restore)
 }
 
-/** Renders the frame at `time` into the current drawing buffer. */
-async function drawFrameAt(time, animated) {
-  const { scene, gl, camera, applyAt, markScreenDirty } = studioApi
+/** Moves the recording to `time`. A seek costs a decode, so call it sparingly. */
+async function seekSourceTo(time) {
   const source = useStudio.getState().source
   if (source?.kind === 'video' && source.el.duration) {
     await seek(source.el, time % source.el.duration)
-    markScreenDirty?.()
+    studioApi.markScreenDirty?.()
   }
+}
+
+/** Poses the scene for `time` and draws it into the current buffer. */
+function renderPoseAt(time, animated) {
+  const { scene, gl, camera, applyAt } = studioApi
   applyAt(time, { animated, driveCamera: true })
   scene.updateMatrixWorld(true)
   gl.render(scene, camera)
+}
+
+/** Renders the frame at `time` into the current drawing buffer. */
+async function drawFrameAt(time, animated) {
+  await seekSourceTo(time)
+  renderPoseAt(time, animated)
+}
+
+/**
+ * Shutter accumulation — motion blur.
+ *
+ * A plain render is a stack of infinitely sharp instants. At speed the subject
+ * crosses a visible distance between two of them and the result reads as
+ * stop-motion rather than as something filmed; it is the single biggest reason
+ * a fast move here looks wrong. A real shutter is open for a slice of each
+ * frame and integrates everything that happens while it is, so this samples
+ * the pose several times across that slice and averages them.
+ *
+ * `shutter` is in degrees, the way a camera is marked: 180 is the film
+ * standard and means open for half the frame interval. The slice is centred on
+ * the frame time rather than starting at it, so the blur does not drag the
+ * subject half a frame ahead of where the timeline says it is.
+ *
+ * Only the 3D pose is re-sampled. The recording on the display is seeked once
+ * per output frame, because a video seek costs a decode — eight per frame
+ * would multiply an already slow render again, for motion that the source
+ * footage has blurred for us already.
+ *
+ * Accumulation runs on a 2D canvas with 'lighter' and 1/N alpha rather than
+ * reading pixels back, which keeps it on the GPU. The cost is that each
+ * sample is quantised to 8 bits before it is summed, so the average can be off
+ * by up to N/2 of 255 — invisible at the sample counts offered here, and worth
+ * it against eight full-frame readbacks.
+ */
+function makeAccumulator(width, height) {
+  const c = document.createElement('canvas')
+  c.width = width
+  c.height = height
+  const ctx = c.getContext('2d', { alpha: false, willReadFrequently: false })
+  return {
+    canvas: c,
+    begin(samples) {
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.globalAlpha = 1
+      ctx.fillStyle = '#000000'
+      ctx.fillRect(0, 0, width, height)
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.globalAlpha = 1 / samples
+    },
+    add(source) {
+      ctx.drawImage(source, 0, 0, width, height)
+    },
+    end() {
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.globalAlpha = 1
+    },
+  }
 }
 
 /**
@@ -158,6 +219,8 @@ export async function exportVideo({
   size = 'M',
   bitrateMbps = 14,
   draft = false,
+  blurSamples = 1,
+  shutter = 180,
   onProgress,
 } = {}) {
   const { gl, camera, scene, canvas, applyAt, setSharpTexture } = studioApi
@@ -190,11 +253,34 @@ export async function exportVideo({
     }
 
     const animated = state.keyframes.length >= 2
-    const drawFrame = (i) => drawFrameAt(i / effFps, animated)
+    // A draft is for checking timing, and blur is the most expensive thing
+    // here, so it is always off in one. A still scene has nothing to blur.
+    const samples = draft || !animated ? 1 : Math.max(1, Math.round(blurSamples))
+    const shutterSeconds = (shutter / 360) / effFps
+    const accum = samples > 1 ? makeAccumulator(width, height) : null
+
+    /** Renders output frame `i` and returns the surface holding it. */
+    const drawFrame = async (i) => {
+      const t = i / effFps
+      if (!accum) {
+        await drawFrameAt(t, animated)
+        return canvas
+      }
+      await seekSourceTo(t)
+      accum.begin(samples)
+      for (let k = 0; k < samples; k++) {
+        renderPoseAt(t + ((k + 0.5) / samples - 0.5) * shutterSeconds, animated)
+        accum.add(canvas)
+      }
+      accum.end()
+      return accum.canvas
+    }
 
     try {
       if (!supportsWebCodecs()) {
-        const blob = await realtimeCapture({ fps: effFps, drawFrame, totalFrames, onProgress })
+        // The fallback records the live WebGL canvas as a stream, so there is
+        // nowhere to hand an accumulated frame; it always captures unblurred.
+        const blob = await realtimeCapture({ fps: effFps, drawFrame: (i) => drawFrameAt(i / effFps, animated), totalFrames, onProgress })
         restore()
         return { blob, filename: `mockup-${Date.now()}.webm`, mode: 'realtime-webm' }
       }
@@ -224,9 +310,9 @@ export async function exportVideo({
       const frameDuration = 1_000_000 / effFps
       for (let i = 0; i < totalFrames; i++) {
         if (encoderError) throw encoderError
-        await drawFrame(i)
+        const surface = await drawFrame(i)
 
-        const frame = new VideoFrame(canvas, {
+        const frame = new VideoFrame(surface, {
           timestamp: Math.round(i * frameDuration),
           duration: Math.round(frameDuration),
         })

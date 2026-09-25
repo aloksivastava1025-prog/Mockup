@@ -35,6 +35,9 @@ export default function RightPanel({ onCollapse }) {
   const [aspect, setAspect] = useState('16:9')
   const [size, setSize] = useState('M')
   const [draft, setDraft] = useState(false)
+  // Shutter samples per frame. Off by default: it multiplies render time, and
+  // a still composition has nothing to blur.
+  const [blurSamples, setBlurSamples] = useState(1)
   const [transparent, setTransparent] = useState(false)
   // Screen recordings are full of small text, which is where a low bitrate
   // shows first — default to the higher setting rather than the smaller file.
@@ -47,7 +50,7 @@ export default function RightPanel({ onCollapse }) {
   const runExport = async () => {
     setError(null)
     try {
-      const { blob, filename, mode } = await exportVideo({ fps, aspect, size, bitrateMbps, draft })
+      const { blob, filename, mode } = await exportVideo({ fps, aspect, size, bitrateMbps, draft, blurSamples })
       setLastMode(mode)
       downloadBlob(blob, filename)
     } catch (e) {
@@ -225,10 +228,25 @@ export default function RightPanel({ onCollapse }) {
           ]}
           onChange={setBitrateMbps}
         />
+        <Segmented
+          label="Blur"
+          value={blurSamples}
+          options={[
+            { value: 1, label: 'Off' },
+            { value: 4, label: 'Light' },
+            { value: 8, label: 'Full' },
+          ]}
+          onChange={setBlurSamples}
+        />
+        <p className="hint">
+          {blurSamples > 1
+            ? `Motion blur — ${blurSamples} samples across a 180° shutter, so fast moves read as filmed rather than as stop-motion. Roughly ${blurSamples}x slower to render, and off in Draft.`
+            : 'No motion blur. Every frame is an instant, which is what makes quick moves look like stop-motion.'}
+        </p>
         <Toggle label="Draft" value={draft} onChange={setDraft} />
         <p className="hint">
           {draft
-            ? 'Small, 24fps, no mipmaps — roughly 3x faster for checking timing.'
+            ? 'Small, 24fps, no mipmaps, no blur — roughly 3x faster for checking timing.'
             : 'Full resolution and sharpening. Slower; use Draft to check timing first.'}
         </p>
 
