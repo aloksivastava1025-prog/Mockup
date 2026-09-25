@@ -1,4 +1,4 @@
-import { ANIMATED_GROUPS } from '../store/useStudio.js'
+import { ANIMATED_GROUPS } from './groups.js'
 
 /**
  * Catmull-Rom through four control points.

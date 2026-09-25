@@ -2,8 +2,9 @@ import { create } from 'zustand'
 import { samplesToKeyframes } from '../anim/record.js'
 import { DEFAULT_DEVICE, DEVICE_LIST, DEVICES } from '../devices/index.js'
 
-// Groups listed here are the ones a keyframe snapshots and the animator interpolates.
-export const ANIMATED_GROUPS = ['device', 'camera', 'screen', 'post']
+// Re-exported so existing callers keep one import; the list itself lives in
+// anim/groups.js, away from anything that pulls in React.
+export { ANIMATED_GROUPS } from '../anim/groups.js'
 
 const defaults = {
   device: {
