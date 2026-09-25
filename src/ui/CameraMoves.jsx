@@ -10,10 +10,17 @@ import { MOVES, MOVE_GROUPS, buildMove } from '../anim/cameraMoves.js'
  * whole point: frame a low three-quarter by hand, ask for an orbit, and you
  * get a low three-quarter orbit. Grouped and collapsed for the same reason the
  * effects menu is — fifteen names in a column is a list to read, not a menu.
+ *
+ * Settings sit above the menu and again below it, and that is deliberate. The
+ * ones above are what the next move will be made from; the ones below retune
+ * the move already on the timeline. Guessing the numbers before you have seen
+ * the move is the hard way round, so the second set is the one that matters.
  */
 export default function CameraMoves() {
   const playhead = useStudio((s) => s.playhead)
   const addCameraMove = useStudio((s) => s.addCameraMove)
+  const retuneMove = useStudio((s) => s.retuneMove)
+  const lastMove = useStudio((s) => s.lastMove)
   const shake = useStudio((s) => s.shake)
   const setShake = useStudio((s) => s.setShake)
   const [open, setOpen] = useState(null)
@@ -22,9 +29,24 @@ export default function CameraMoves() {
   const [dir, setDir] = useState(1)
 
   const add = (id) => {
-    const keys = buildMove(id, useStudio.getState(), { seconds, amount, startTime: playhead, dir })
-    if (keys) addCameraMove(keys)
+    const state = useStudio.getState()
+    // The framing at the moment the move was asked for, kept so every later
+    // adjustment is built from the same starting point. Reading the live
+    // camera instead would walk the shot across the room one nudge at a time,
+    // and reading the move's own first keyframe would be wrong for parallax,
+    // which deliberately opens offset.
+    const recipe = { id, seconds, amount, dir, zoom: 1, dist: 1, startTime: playhead, from: state.camera }
+    const keys = buildMove(id, state, recipe)
+    if (keys) addCameraMove(keys, recipe)
   }
+
+  const retune = (patch) => {
+    const recipe = { ...lastMove, ...patch }
+    const keys = buildMove(recipe.id, { ...useStudio.getState(), camera: recipe.from }, recipe)
+    if (keys) retuneMove(keys, recipe)
+  }
+
+  const live = lastMove && MOVES[lastMove.id]
 
   return (
     <>
@@ -89,6 +111,54 @@ export default function CameraMoves() {
           )}
         </div>
       </div>
+
+      {live && (
+        <div className="subgroup">
+          <div className="field">
+            <label>Adjust</label>
+            <span className="badge">{MOVES[lastMove.id].label}</span>
+          </div>
+          <Slider
+            label="Length"
+            value={lastMove.seconds}
+            min={0.4}
+            max={12}
+            step={0.1}
+            precision={1}
+            unit="s"
+            onChange={(v) => retune({ seconds: v })}
+          />
+          <Slider
+            label="Size"
+            value={lastMove.amount}
+            min={0}
+            max={2.5}
+            step={0.05}
+            onChange={(v) => retune({ amount: v })}
+          />
+          <Slider
+            label="Zoom"
+            value={lastMove.zoom}
+            min={0}
+            max={2}
+            step={0.05}
+            onChange={(v) => retune({ zoom: v })}
+          />
+          <Slider
+            label="Travel"
+            value={lastMove.dist}
+            min={0}
+            max={2}
+            step={0.05}
+            onChange={(v) => retune({ dist: v })}
+          />
+          <p className="hint">
+            {MOVES[lastMove.id].vertigo
+              ? 'Zoom 1.00 holds the subject exactly the same size while the camera pulls back — that lock is the effect. Travel is how far it pulls. Drop Zoom to 0 and it is an ordinary dolly.'
+              : 'Zoom is the lens, Travel is the distance the camera covers. Size scales both at once; these two set them against each other.'}
+          </p>
+        </div>
+      )}
     </>
   )
 }

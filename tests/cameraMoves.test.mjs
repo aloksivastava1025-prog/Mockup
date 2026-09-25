@@ -89,5 +89,47 @@ for (const id of ['craneUp', 'dollyIn']) {
   )
 }
 
-console.log(`${Object.keys(MOVES).length} moves, orbit round-trip exact to 1e-6, left/right mirror`)
+/**
+ * A dolly zoom holds the subject the same size while the camera retreats. The
+ * measure of that is d·tan(fov/2): constant means the subject is locked.
+ */
+{
+  const keys = buildMove('dollyZoom', state, { zoom: 1 })
+  const scale = keys.map((k) => {
+    const c = k.state.camera
+    const d = Math.hypot(...c.position.map((v, i) => v - c.target[i]))
+    return d * Math.tan((c.fov / 2) * (Math.PI / 180))
+  })
+  for (const v of scale) {
+    assert.ok(Math.abs(v / scale[0] - 1) < 0.002, `subject size should hold: ${scale.join(' -> ')}`)
+  }
+  // And the camera really does travel, or holding the size would be trivial.
+  const far = keys[keys.length - 1].state.camera
+  const near = keys[0].state.camera
+  const dFar = Math.hypot(...far.position.map((v, i) => v - far.target[i]))
+  const dNear = Math.hypot(...near.position.map((v, i) => v - near.target[i]))
+  assert.ok(dFar / dNear > 1.5, 'the camera should actually pull back')
+
+  // Zoom 0 is a plain dolly: distance changes, the lens does not.
+  const plain = buildMove('dollyZoom', state, { zoom: 0 })
+  assert.equal(plain[0].state.camera.fov, plain[plain.length - 1].state.camera.fov, 'zoom 0 leaves the lens alone')
+}
+
+/**
+ * Retuning rebuilds from the pose the move was asked for, so adjusting a
+ * slider twenty times must land in exactly the same place as adjusting it
+ * once. Anything else and the shot creeps every time you touch it.
+ */
+{
+  const once = buildMove('arc', state, { amount: 1.4 })
+  let repeated = null
+  for (const a of [0.3, 2.1, 0.8, 1.4]) repeated = buildMove('arc', state, { amount: a })
+  assert.deepEqual(
+    repeated.map((k) => k.state.camera.position),
+    once.map((k) => k.state.camera.position),
+    'retuning must not accumulate',
+  )
+}
+
+console.log(`${Object.keys(MOVES).length} moves, orbit round-trip exact to 1e-6, left/right mirror, vertigo locks subject size`)
 console.log('ok')

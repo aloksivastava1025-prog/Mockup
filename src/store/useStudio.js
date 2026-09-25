@@ -521,7 +521,7 @@ export const useStudio = create((set, get) => ({
    * the result is neither move. The timeline grows if the move runs past the
    * end, because silently truncating it is worse than a longer clip.
    */
-  addCameraMove: (keys) =>
+  addCameraMove: (keys, recipe = null) =>
     set((s) => {
       if (!keys?.length) return {}
       const start = keys[0].time
@@ -533,8 +533,36 @@ export const useStudio = create((set, get) => ({
         duration: Math.max(s.duration, Math.ceil(end * 2) / 2),
         playhead: start,
         previewLive: false,
+        // What the move was made from, so it can be made again with one number
+        // changed. Without this the settings are gone the moment the keyframes
+        // land, and the only way to adjust a move is to delete it and guess.
+        lastMove: recipe ? { ...recipe, keyIds: keys.map((k) => k.id) } : null,
       }
     }),
+
+  /**
+   * Rebuild the move that was placed last, in place.
+   *
+   * Its own keyframes are swapped out by id rather than by time, so a move
+   * that got shorter does not leave its old tail sitting on the timeline, and
+   * anything the user placed by hand in the meantime is left alone.
+   */
+  lastMove: null,
+  retuneMove: (keys, recipe) =>
+    set((s) => {
+      if (!keys?.length || !s.lastMove) return {}
+      const mine = new Set(s.lastMove.keyIds)
+      const kept = s.keyframes.filter((k) => !mine.has(k.id))
+      const end = keys[keys.length - 1].time
+      return {
+        ...historyPatch(s, null),
+        keyframes: [...kept, ...keys].sort((a, b) => a.time - b.time),
+        duration: Math.max(s.duration, Math.ceil(end * 2) / 2),
+        previewLive: false,
+        lastMove: { ...recipe, keyIds: keys.map((k) => k.id) },
+      }
+    }),
+  forgetLastMove: () => set({ lastMove: null }),
 
   /** How the segment leaving this keyframe is timed. */
   setKeyframeEase: (id, ease) =>

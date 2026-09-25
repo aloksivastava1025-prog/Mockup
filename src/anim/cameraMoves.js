@@ -46,6 +46,23 @@ export const MOVES = {
     keys: [{ u: 0 }, { u: 0.18, fov: 11 }, { u: 0.5, fov: -2 }, { u: 1 }],
   },
 
+  /**
+   * The vertigo shot. The camera retreats while the lens tightens by exactly
+   * enough to hold the subject the same size, so the subject sits still and
+   * the room stretches out behind it.
+   *
+   * Flagged rather than written as fov deltas because the right amount of
+   * tightening depends on the focal length you started at — a 20mm and a 70mm
+   * need completely different numbers to cancel the same retreat, and a fixed
+   * delta would be wrong for every framing but one.
+   */
+  dollyZoom: {
+    label: 'Dolly zoom',
+    group: 'push',
+    vertigo: true,
+    keys: [{ u: 0 }, { u: 1, d: 1.75 }],
+  },
+
   orbit: { label: 'Orbit', group: 'around', keys: [{ u: 0 }, { u: 1, az: 75 }] },
   arc: {
     label: 'Arc',
@@ -101,7 +118,11 @@ const lerp = (a, b, t) => a + (b - a) * t
  * the device registry and its .jsx behind it, which the test runner cannot
  * load — a mistake already made once in this codebase.
  */
-export function buildMove(id, state, { seconds = 4, amount = 1, startTime = 0, dir = 1 } = {}) {
+export function buildMove(
+  id,
+  state,
+  { seconds = 4, amount = 1, startTime = 0, dir = 1, zoom = 1, dist = 1 } = {},
+) {
   const move = MOVES[id]
   if (!move) return null
 
@@ -129,7 +150,11 @@ export function buildMove(id, state, { seconds = 4, amount = 1, startTime = 0, d
   return move.keys.map((k) => {
     const az = (base.az + (k.az ?? 0) * amount * side) * DEG
     const el = (base.el + (k.el ?? 0) * amount) * DEG
-    const d = base.d * (1 + ((k.d ?? 1) - 1) * amount)
+    // `zoom` and `dist` are second multipliers on top of `amount`, so the two
+    // halves of a dolly zoom can be dialled against each other. That is the
+    // whole move: the lens tightening exactly as fast as the camera retreats.
+    // One slider for both can only make it bigger, never balance it.
+    const d = base.d * (1 + ((k.d ?? 1) - 1) * amount * dist)
     const pan = (k.pan ?? 0) * amount * side
     const lift = (k.lift ?? 0) * amount
     const slide = (k.slide ?? 0) * amount * side
@@ -141,6 +166,23 @@ export function buildMove(id, state, { seconds = 4, amount = 1, startTime = 0, d
       target[2] + d * Math.cos(el) * Math.cos(az) + right[2] * slide,
     ]
 
+    /**
+     * A subject fills the frame when d·tan(fov/2) is constant, so holding it
+     * still through a dolly means tan(fov/2) scaling with 1/d.
+     *
+     * `zoom` is how much of that compensation to apply: 1 locks the subject
+     * exactly, 0 leaves a plain dolly with no lens move at all, and past 1 it
+     * overshoots and the subject swells or shrinks as the room warps. The
+     * effect lives in that balance, so it is worth being able to miss it on
+     * purpose.
+     */
+    let fov = fov0 + (k.fov ?? 0) * amount * zoom
+    if (move.vertigo) {
+      const half = Math.tan((fov0 / 2) * DEG)
+      const locked = (2 * Math.atan(half * (base.d / d))) / DEG
+      fov = Math.max(8, Math.min(100, lerp(fov0, locked, zoom)))
+    }
+
     return {
       id: `kf_move_${id}_${k.u}_${Math.random().toString(36).slice(2, 7)}`,
       time: +(startTime + k.u * seconds).toFixed(3),
@@ -149,7 +191,7 @@ export function buildMove(id, state, { seconds = 4, amount = 1, startTime = 0, d
         camera: {
           position: position.map((v) => +v.toFixed(4)),
           target: target.map((v) => +v.toFixed(4)),
-          fov: +(fov0 + (k.fov ?? 0) * amount).toFixed(2),
+          fov: +fov.toFixed(2),
         },
         screen: { ...s.screen },
         post: { ...s.post },
