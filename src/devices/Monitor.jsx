@@ -26,6 +26,13 @@ const DEG = Math.PI / 180
 
 const safeRadius = (dims, r) => Math.min(r, Math.min(...dims) / 2 - 1e-4)
 
+// Same stacking rule as the tablet: authored in mm, scaled by ~0.001, so no two
+// front surfaces may share a depth or they fight for every pixel.
+const GLASS_T = 1
+const GLASS_INSET = 0.8
+const Z_SCREEN = 1.0
+const Z_SHEEN = 1.8
+
 export const monitorMeta = {
   id: 'monitor',
   label: 'Display 32"',
@@ -87,19 +94,18 @@ export default function Monitor({ rootRef, texture, screenMatRef, material, scre
             <meshStandardMaterial {...body} />
           </RoundedBox>
 
-          {/* Black glass face, placed by its front surface rather than its
-              centre so it does not sit proud of the body and hide the display. */}
+          {/* black glass, set behind the body's front face */}
           <RoundedBox
-            args={[PANEL_W - 2, PANEL_H - 2, 1]}
-            radius={safeRadius([PANEL_W - 2, PANEL_H - 2, 1], FRAME_R - 1)}
+            args={[PANEL_W - 2, PANEL_H - 2, GLASS_T]}
+            radius={safeRadius([PANEL_W - 2, PANEL_H - 2, GLASS_T], FRAME_R - 1)}
             smoothness={4}
-            position={[0, 0, PANEL_D / 2 - 0.5]}
+            position={[0, 0, PANEL_D / 2 - GLASS_INSET - GLASS_T / 2]}
           >
             <meshStandardMaterial color={material.bezelColor} roughness={0.3} metalness={0.2} />
           </RoundedBox>
 
           {/* display */}
-          <mesh position={[0, 0, PANEL_D / 2 + 0.15]}>
+          <mesh position={[0, 0, PANEL_D / 2 + Z_SCREEN]}>
             <planeGeometry args={[SCREEN_W, SCREEN_H]} />
             {texture ? (
               <meshBasicMaterial
@@ -125,7 +131,7 @@ export default function Monitor({ rootRef, texture, screenMatRef, material, scre
           </mesh>
 
           {/* glass sheen */}
-          <mesh position={[0, 0, PANEL_D / 2 + 0.32]}>
+          <mesh position={[0, 0, PANEL_D / 2 + Z_SHEEN]}>
             <planeGeometry args={[SCREEN_W, SCREEN_H]} />
             <meshPhysicalMaterial
               transparent

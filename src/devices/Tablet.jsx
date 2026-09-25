@@ -28,6 +28,19 @@ const DEG = Math.PI / 180
 
 const safeRadius = (dims, r) => Math.min(r, Math.min(...dims) / 2 - 1e-4)
 
+/**
+ * Depths of the stacked front surfaces, in millimetres from the body's front
+ * face. These are authored in mm and then scaled by ~0.001, so a separation
+ * that looks generous here is tiny in world units — and two faces landing on
+ * the *same* depth is a guaranteed flicker, which is exactly what a glass slab
+ * centred on the body face produces. Keep them apart, in this order.
+ */
+const GLASS_T = 0.5
+const GLASS_INSET = 0.4 // glass front sits behind the body front
+const Z_SCREEN = 0.5
+const Z_CAMERA = 0.7
+const Z_SHEEN = 0.9
+
 export const tabletMeta = {
   id: 'tablet',
   label: 'Tablet 11"',
@@ -102,20 +115,18 @@ export default function Tablet({ rootRef, texture, screenMatRef, material, scree
               <meshStandardMaterial {...body} />
             </RoundedBox>
 
-            {/* Black glass face. Placed by its *front* surface, not its centre —
-                a slab centred on the body face sticks half its thickness out
-                and swallows the display plane behind it. */}
+            {/* black glass, set behind the body's front face */}
             <RoundedBox
-              args={[W - 1.6, H - 1.6, 0.5]}
-              radius={safeRadius([W - 1.6, H - 1.6, 0.5], FRAME_R - 0.8)}
+              args={[W - 1.6, H - 1.6, GLASS_T]}
+              radius={safeRadius([W - 1.6, H - 1.6, GLASS_T], FRAME_R - 0.8)}
               smoothness={5}
-              position={[0, 0, D / 2 - 0.25]}
+              position={[0, 0, D / 2 - GLASS_INSET - GLASS_T / 2]}
             >
               <meshStandardMaterial color={material.bezelColor} roughness={0.28} metalness={0.2} />
             </RoundedBox>
 
             {/* display */}
-            <mesh position={[0, 0, D / 2 + 0.04]}>
+            <mesh position={[0, 0, D / 2 + Z_SCREEN]}>
               <planeGeometry args={[SCREEN_W, SCREEN_H]} />
               {texture ? (
                 <meshBasicMaterial
@@ -141,7 +152,7 @@ export default function Tablet({ rootRef, texture, screenMatRef, material, scree
             </mesh>
 
             {/* glass sheen */}
-            <mesh position={[0, 0, D / 2 + 0.09]}>
+            <mesh position={[0, 0, D / 2 + Z_SHEEN]}>
               <planeGeometry args={[SCREEN_W, SCREEN_H]} />
               <meshPhysicalMaterial
                 transparent
@@ -154,7 +165,7 @@ export default function Tablet({ rootRef, texture, screenMatRef, material, scree
             </mesh>
 
             {/* front camera */}
-            <mesh position={[0, H / 2 - 5, D / 2 + 0.06]}>
+            <mesh position={[0, H / 2 - 5, D / 2 + Z_CAMERA]}>
               <circleGeometry args={[1.6, 20]} />
               <meshStandardMaterial color="#0b0b0e" roughness={0.3} metalness={0.5} />
             </mesh>
