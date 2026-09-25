@@ -91,6 +91,12 @@ const defaults = {
    * them rather than the areas being animated themselves.
    */
   focus: { areas: [], hold: 1.4, travel: 1.6, open: 1.0 },
+  /**
+   * Text over the shot. Each title carries its own in-point and duration
+   * rather than being keyframed, because a caption is a thing that appears
+   * and leaves, not a value that is interpolated.
+   */
+  titles: [],
 }
 
 const clone = (v) => JSON.parse(JSON.stringify(v))
@@ -139,6 +145,7 @@ export const DOC_KEYS = [
   'companions',
   'spacing',
   'focus',
+  'titles',
   'adaptScreen',
   'keyframes',
   'duration',
@@ -232,6 +239,30 @@ export const useStudio = create((set, get) => ({
       }
       return { ...historyPatch(s, null), companions: arrange(list, s.deviceId, s.spacing) }
     }),
+
+  addTitle: () =>
+    set((s) => ({
+      ...historyPatch(s, null),
+      titles: [
+        ...s.titles,
+        {
+          id: `ttl_${Date.now().toString(36)}`,
+          text: 'Your headline',
+          x: 0.5, y: 0.18, size: 0.075, weight: 600,
+          align: 'center', color: '#ffffff', anim: 'rise',
+          in: +(s.titles.length * 2).toFixed(1), dur: 3,
+        },
+      ],
+    })),
+
+  updateTitle: (id, patch, key = null) =>
+    set((s) => ({
+      ...historyPatch(s, key && `title.${id}.${key}`),
+      titles: s.titles.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+    })),
+
+  removeTitle: (id) =>
+    set((s) => ({ ...historyPatch(s, null), titles: s.titles.filter((t) => t.id !== id) })),
 
   addFocusArea: (rect) =>
     set((s) => ({

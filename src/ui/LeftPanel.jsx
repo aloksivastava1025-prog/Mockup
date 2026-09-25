@@ -3,6 +3,7 @@ import { useStudio } from '../store/useStudio.js'
 import { DEVICE_LIST, COMING_SOON, DEVICES } from '../devices/index.js'
 import { Panel, Segmented, Slider, Toggle, Vec3 } from './controls.jsx'
 import FocusPanel from './FocusPanel.jsx'
+import TitlesPanel from './TitlesPanel.jsx'
 
 function ResetBtn({ group }) {
   const resetGroup = useStudio((s) => s.resetGroup)
@@ -246,6 +247,7 @@ export default function LeftPanel({ onCollapse }) {
       </Panel>
 
       <FocusPanel />
+      <TitlesPanel />
 
       <Panel title="Transform" right={<ResetBtn group="device" />}>
         <Vec3

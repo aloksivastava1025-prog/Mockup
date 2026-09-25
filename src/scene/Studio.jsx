@@ -9,6 +9,7 @@ import { createScreenSource } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
 import { SURFACES, SURFACE_GEOMETRY, surfaceTexture } from './surfaces.js'
 import { backdropTexture } from './backdrops.js'
+import { makeTitleLayer } from './titles.js'
 import Props from './Props.jsx'
 
 const DEG = Math.PI / 180
@@ -346,6 +347,43 @@ function Ground() {
  * nothing and re-seated in front of the camera every frame, so it covers the
  * view at any fov/aspect and is captured by the exporter like everything else.
  */
+const _seat = new THREE.Vector3()
+
+/**
+ * Park a quad just in front of the near plane, square to the camera and big
+ * enough to fill the frame at any fov or aspect. Used by both full-frame
+ * overlays; they were carrying a copy each.
+ */
+function seatOnCamera(mesh, camera) {
+  const dist = camera.near * 2.5
+  const h = 2 * dist * Math.tan((camera.fov * DEG) / 2)
+  mesh.scale.set(h * camera.aspect * 1.2, h * 1.2, 1)
+  camera.updateMatrixWorld()
+  mesh.quaternion.copy(camera.quaternion)
+  mesh.position.copy(camera.position).add(_seat.set(0, 0, -dist).applyQuaternion(camera.quaternion))
+  mesh.updateMatrixWorld()
+}
+
+/**
+ * The title layer: same camera-locked quad trick as the dip-to-black, one
+ * order below it so a fade covers the text rather than the text surviving it.
+ */
+function TitleOverlay({ meshRef, matRef, map }) {
+  return (
+    <mesh ref={meshRef} renderOrder={998} frustumCulled={false} visible={false}>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial
+        ref={matRef}
+        map={map}
+        transparent
+        depthTest={false}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
 function FadeOverlay({ meshRef, matRef }) {
   return (
     <mesh ref={meshRef} renderOrder={999} frustumCulled={false} visible={false}>
@@ -414,6 +452,10 @@ function Rig() {
   const controlsRef = useRef()
   const fadeMeshRef = useRef()
   const fadeMatRef = useRef()
+  const titleMeshRef = useRef()
+  const titleMatRef = useRef()
+  const titleLayer = useMemo(() => makeTitleLayer(), [])
+  useEffect(() => () => titleLayer.dispose(), [titleLayer])
   const { camera, gl, scene, invalidate } = useThree()
 
   const deviceId = useStudio((s) => s.deviceId)
@@ -525,6 +567,18 @@ function Rig() {
         }
       }
 
+      // Titles. Drawn at the drawing buffer's own size so type is rendered at
+      // output resolution rather than scaled up from the preview's.
+      const titleMesh = titleMeshRef.current
+      if (titleMesh) {
+        const titles = useStudio.getState().titles
+        const on =
+          titles.length > 0 &&
+          titleLayer.draw(titles, time, gl.domElement.width, gl.domElement.height)
+        titleMesh.visible = on
+        if (on) seatOnCamera(titleMesh, camera)
+      }
+
       // Transition overlay: sit just in front of the near plane, sized to the
       // current frustum so it always fills the frame.
       const fadeMesh = fadeMeshRef.current
@@ -535,15 +589,7 @@ function Rig() {
         fadeMat.opacity = amount
         if (fadeMesh.visible) {
           if (eff.post?.fadeColor) fadeMat.color.set(eff.post.fadeColor)
-          const dist = camera.near * 2.5
-          const h = 2 * dist * Math.tan((camera.fov * DEG) / 2)
-          fadeMesh.scale.set(h * camera.aspect * 1.2, h * 1.2, 1)
-          camera.updateMatrixWorld()
-          fadeMesh.quaternion.copy(camera.quaternion)
-          fadeMesh.position.copy(camera.position).add(
-            new THREE.Vector3(0, 0, -dist).applyQuaternion(camera.quaternion),
-          )
-          fadeMesh.updateMatrixWorld()
+          seatOnCamera(fadeMesh, camera)
         }
       }
       return eff
@@ -718,6 +764,7 @@ function Rig() {
       <Ground />
       <Props visible={!!background.props} />
       <FadeOverlay meshRef={fadeMeshRef} matRef={fadeMatRef} />
+      <TitleOverlay meshRef={titleMeshRef} matRef={titleMatRef} map={titleLayer.texture} />
       <DeviceComponent
         rootRef={rootRef}
         lidRef={lidRef}
