@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 export function Panel({ title, children, defaultOpen = true, right }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -19,25 +19,56 @@ export function Panel({ title, children, defaultOpen = true, right }) {
 }
 
 /** label · slider · right-aligned value readout, all on one row */
+/**
+ * A slider whose track is the whole row: label on the left, fill growing from
+ * the left edge, value in its own pill on the right. No thumb — at this size a
+ * knob is a small target and the fill already says where the value sits.
+ *
+ * It is still a real `input[type=range]`, laid transparently over the pill, so
+ * the arrow keys, Home/End, tab order and screen-reader semantics all come for
+ * free. Painting a div and listening for pointer events would have thrown all
+ * of that away.
+ */
 export function Slider({ label, value, min, max, step = 0.01, unit = '', onChange, precision = 2 }) {
-  const pct = ((value - min) / (max - min)) * 100
+  const pct = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100))
+  const rowRef = useRef(null)
+
+  // Wheel-to-adjust, which is the only comfortable way to land on an exact
+  // value in a range this wide. Registered by hand rather than with onWheel
+  // because React attaches wheel listeners passively, and a passive listener
+  // cannot stop the panel scrolling underneath.
+  useEffect(() => {
+    const el = rowRef.current
+    if (!el) return
+    const onWheel = (e) => {
+      e.preventDefault()
+      const dir = e.deltaY > 0 ? -1 : 1
+      const coarse = e.shiftKey ? 10 : 1
+      const next = Math.min(max, Math.max(min, value + dir * step * coarse))
+      if (next !== value) onChange(+next.toFixed(6))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [value, min, max, step, onChange])
+
   return (
-    <div className="field">
-      <label>{label}</label>
-      <div className="control">
+    <div className="slider-row" ref={rowRef}>
+      <div className="slider-track" style={{ '--pct': `${pct}%` }}>
+        <span className="slider-label">{label}</span>
+        <span className="slider-hint">drag · scroll</span>
         <input
           type="range"
+          aria-label={label}
           min={min}
           max={max}
           step={step}
           value={value}
-          style={{ '--pct': `${pct}%` }}
           onChange={(e) => onChange(parseFloat(e.target.value))}
         />
-        <span className="readout">
-          {Number(value).toFixed(precision)}
-          {unit}
-        </span>
+      </div>
+      <div className="slider-value">
+        {Number(value).toFixed(precision)}
+        {unit}
       </div>
     </div>
   )

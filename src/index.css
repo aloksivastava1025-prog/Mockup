@@ -15,6 +15,9 @@
   --field-hover: #f5f5f5;
   --field-active: #ececec;
   --accent: #0d99ff;
+  --slider-trough: #efeeec;
+  --slider-fill: #e0ddd8;
+  --slider-value: #6d6459;
   --accent-press: #0b87e3;
   --danger: #e5484d;
   --radius: 4px;
@@ -265,28 +268,94 @@ select:focus {
 }
 
 /* ---------- slider ---------- */
-input[type='range'] {
+/* ---------- slider ---------- */
+/* The row is the track. Label sits inside it, the fill grows from the left,
+   and the value gets a pill of its own so the numbers line up down the panel. */
+.slider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px;
+  gap: 5px;
+  align-items: stretch;
+}
+.slider-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 7px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, var(--slider-fill) var(--pct, 0%), var(--slider-trough) var(--pct, 0%));
+}
+.slider-track input[type='range'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0; /* the pill is the visual; this is here for input and a11y */
+  cursor: ew-resize;
   -webkit-appearance: none;
   appearance: none;
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, var(--text) var(--pct, 50%), var(--line-strong) var(--pct, 50%));
-  outline: none;
+  background: transparent;
 }
-input[type='range']::-webkit-slider-thumb {
+.slider-track input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #fff;
-  border: 1px solid var(--line-strong);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
-  cursor: grab;
+  width: 24px;
+  height: 28px;
 }
-input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; border-color: var(--accent); }
+.slider-track input[type='range']:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: transparent;
+}
+.slider-label {
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--label);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Only worth saying once someone is already pointing at the control — and
+   taken out of flow, because a hidden chip that still reserves its width was
+   squeezing every label down to an ellipsis. */
+.slider-hint {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  padding: 1px 4px;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.slider-row:hover .slider-hint { opacity: 1; }
+.slider-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 7px;
+  background: var(--slider-trough);
+  color: var(--slider-value);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 /* ---------- colour row ---------- */
 .color-row { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 4px; border-radius: var(--radius); }
