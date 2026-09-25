@@ -16,7 +16,21 @@ const BH = 0.18
 const LW = 17.5
 const LD = 11.8
 const LH = 0.12
+/**
+ * Heights of the things stacked on the keyboard deck, in author units.
+ *
+ * The deck is a 0.008-thick slab centred 0.002 above the base, so its top face
+ * is at BASE_TOP + 0.006. Anything resting on the deck has to be above that
+ * and above each other, and the separations are tiny once the model is scaled
+ * by ~0.019 — which is exactly why two of them landing on the same number is
+ * not obvious in the source and very obvious on screen.
+ */
+const DECK_TOP_OFF = 0.006
+const GRILL_OFF = 0.012 // was DECK_TOP_OFF, i.e. coplanar with the deck
+const CAPS_OFF = 0.010 // above the key tops, which sit at KEY_H + 0.004
+
 const BASE_TOP = BH
+const GRILL_Y = BASE_TOP + GRILL_OFF
 
 const SCREEN_W = LW - 0.15 - 0.24
 const SCREEN_H = LD - 0.15 - 0.37
@@ -305,7 +319,10 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
           <meshStandardMaterial {...bodyProps} />
         </RoundedBox>
 
-        {/* recessed keyboard deck */}
+        {/* recessed keyboard deck. Its top face lands at DECK_TOP; everything
+            laid on the deck has to clear that, and clear each other. The grill
+            planes used to sit at exactly DECK_TOP and flickered against it
+            whenever the camera moved. */}
         <mesh position={[0, BASE_TOP + 0.002, -1.8]} receiveShadow>
           <boxGeometry args={[14.2, 0.008, 5.8]} />
           <meshStandardMaterial color="#0a0a0c" metalness={0.1} roughness={0.92} />
@@ -313,7 +330,7 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
 
         {/* speaker grills */}
         {[-7.8, 7.8].map((gx) => (
-          <mesh key={gx} position={[gx, BASE_TOP + 0.006, -1.8]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh key={gx} position={[gx, GRILL_Y, -1.8]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[0.9, 4.8]} />
             <meshStandardMaterial map={grillTex} color="#4a4a4e" roughness={0.9} metalness={0.1} />
           </mesh>
@@ -332,7 +349,7 @@ export default function MacBook({ rootRef, lidRef, texture, screenMatRef, materi
         ))}
 
         {/* baked key caps, with the glyphs lit from behind */}
-        <mesh position={[kbCx, BASE_TOP + KEY_H + 0.006, kbCz]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[kbCx, BASE_TOP + KEY_H + CAPS_OFF, kbCz]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[kbW, kbD]} />
           <meshStandardMaterial
             map={capTex}
