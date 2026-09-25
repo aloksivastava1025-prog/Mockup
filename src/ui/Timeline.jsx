@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { PRESETS, applyPreset } from '../anim/presets.js'
-import { EASE_LIST } from '../anim/interpolate.js'
+import KeyframeEditor from './KeyframeEditor.jsx'
 
 export default function Timeline() {
   const trackRef = useRef(null)
@@ -19,8 +19,6 @@ export default function Timeline() {
   const clearKeyframes = useStudio((s) => s.clearKeyframes)
   const applyKeyframe = useStudio((s) => s.applyKeyframe)
   const moveKeyframe = useStudio((s) => s.moveKeyframe)
-  const restampKeyframe = useStudio((s) => s.restampKeyframe)
-  const setKeyframeEase = useStudio((s) => s.setKeyframeEase)
   const dragRef = useRef(null)
   const recording = useStudio((s) => s.recording)
   const startRecording = useStudio((s) => s.startRecording)
@@ -64,6 +62,8 @@ export default function Timeline() {
   const MAX_MARKERS = 120
   const stride = Math.ceil(keyframes.length / MAX_MARKERS)
   const markers = stride > 1 ? keyframes.filter((_, i) => i % stride === 0) : keyframes
+
+  const selectedKf = keyframes.find((k) => k.id === selected) ?? null
 
   const ticks = []
   const step = duration <= 4 ? 0.5 : duration <= 12 ? 1 : duration <= 30 ? 2 : duration <= 90 ? 10 : 15
@@ -166,48 +166,19 @@ export default function Timeline() {
               }
             }}
           >
-            {selected === k.id && (
-              <div className="kf-pop" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="number"
-                  step={0.05}
-                  min={0}
-                  max={duration}
-                  value={k.time}
-                  onChange={(e) => moveKeyframe(k.id, parseFloat(e.target.value) || 0)}
-                />
-                <span className="unit">s</span>
-                <select
-                  className="kf-ease"
-                  title="How the move leaving this keyframe is timed"
-                  value={k.ease ?? 'spline'}
-                  onChange={(e) => setKeyframeEase(k.id, e.target.value)}
-                >
-                  {EASE_LIST.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <button title="Save the scene as it looks now into this keyframe" onClick={() => restampKeyframe(k.id)}>
-                  Restamp
-                </button>
-                <button
-                  className="danger"
-                  title="Delete this keyframe"
-                  onClick={() => {
-                    removeKeyframe(k.id)
-                    setSelected(null)
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
           </div>
         ))}
         <div className="playhead" style={{ left: `${(playhead / duration) * 100}%` }} />
       </div>
+      {/* Outside the track, and outside the timeline's clipped overflow. */}
+      {selectedKf && (
+        <KeyframeEditor
+          kf={selectedKf}
+          trackRef={trackRef}
+          duration={duration}
+          onClose={() => setSelected(null)}
+        />
+      )}
 
       <p className="hint">
         {recording ? (

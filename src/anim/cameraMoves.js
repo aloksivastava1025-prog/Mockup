@@ -30,6 +30,15 @@ export function orbitOf(position, target) {
   }
 }
 
+/** Where a camera sits given an aim point and an orbit around it. */
+export function placeOrbit(target, { az, el, d }) {
+  return [
+    target[0] + d * Math.cos(el * DEG) * Math.sin(az * DEG),
+    target[1] + d * Math.sin(el * DEG),
+    target[2] + d * Math.cos(el * DEG) * Math.cos(az * DEG),
+  ]
+}
+
 /**
  * Waypoints are `u` (0..1 through the move) plus deltas. Anything omitted
  * holds. `d` is a multiplier on the starting distance, so a move reads the
@@ -160,11 +169,8 @@ export function buildMove(
     const slide = (k.slide ?? 0) * amount * side
 
     const target = [tgt[0] + right[0] * pan, tgt[1] + lift, tgt[2] + right[2] * pan]
-    const position = [
-      target[0] + d * Math.cos(el) * Math.sin(az) + right[0] * slide,
-      target[1] + d * Math.sin(el),
-      target[2] + d * Math.cos(el) * Math.cos(az) + right[2] * slide,
-    ]
+    const orbit = placeOrbit(target, { az: az / DEG, el: el / DEG, d })
+    const position = [orbit[0] + right[0] * slide, orbit[1], orbit[2] + right[2] * slide]
 
     /**
      * A subject fills the frame when d·tan(fov/2) is constant, so holding it

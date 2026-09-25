@@ -581,6 +581,27 @@ export const useStudio = create((set, get) => ({
       }
     }),
 
+  /**
+   * Edit the camera recorded in one keyframe.
+   *
+   * The live camera is moved with it, because the popup only opens after a
+   * click on the marker, and that click already put the scene at this pose.
+   * Writing to the keyframe alone would mean dragging a slider and watching
+   * nothing happen until the playhead came back round.
+   */
+  setKeyframeCamera: (id, camera) =>
+    set((s) => {
+      const kf = s.keyframes.find((k) => k.id === id)
+      if (!kf) return {}
+      const next = { ...kf.state, camera: { ...kf.state.camera, ...camera } }
+      return {
+        ...historyPatch(s, null),
+        keyframes: s.keyframes.map((k) => (k.id === id ? { ...k, state: next } : k)),
+        camera: { ...s.camera, ...camera },
+        previewLive: true,
+      }
+    }),
+
   removeKeyframe: (id) =>
     set((s) => ({ ...historyPatch(s, null), keyframes: s.keyframes.filter((k) => k.id !== id) })),
   clearKeyframes: () => set((s) => ({ ...historyPatch(s, null), keyframes: [] })),
