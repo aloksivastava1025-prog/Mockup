@@ -7,7 +7,7 @@ import { DEFAULT_DEVICE, DEVICES } from '../devices/index.js'
 import { sampleAt } from '../anim/interpolate.js'
 import { createScreenSource } from '../hooks/useScreenTexture.js'
 import { studioApi } from './studioApi.js'
-import { GEOMETRY_REPEAT, SURFACES, SURFACE_GEOMETRY, surfaceTexture } from './surfaces.js'
+import { SURFACES, SURFACE_GEOMETRY, surfaceTexture } from './surfaces.js'
 import { backdropTexture } from './backdrops.js'
 import Props from './Props.jsx'
 
@@ -169,20 +169,6 @@ function Ground() {
   // repeat scales with it, so tile size on the floor stays constant.
   const GROUND = 60
   const map = useMemo(() => surfaceTexture(kind, GROUND), [kind])
-  // A plane derives its repeat from the plane size. A desk slab does not, so
-  // without this the grain is stretched once across the whole top.
-  const geoMap = useMemo(() => {
-    const rep = GEOMETRY_REPEAT[surface.geometry]
-    if (!rep) return null
-    const tex = surfaceTexture(kind, GROUND)
-    if (!tex) return null
-    const t = tex.clone()
-    t.needsUpdate = true
-    t.wrapS = THREE.RepeatWrapping
-    t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(rep[0], rep[1])
-    return t
-  }, [kind, surface.geometry])
 
   // Contact shadows cost a full extra scene render per frame. While a video
   // plays the device and camera are usually still — only the screen content
@@ -225,13 +211,10 @@ function Ground() {
           userData={{ ground: true }}
         >
           <meshStandardMaterial
-            key={kind}
-            map={geoMap}
-            color={geoMap ? background.groundColor ?? '#ffffff' : background.groundColor ?? surface.color}
+            color={background.groundColor ?? surface.color}
             roughness={surface.roughness}
             metalness={surface.metalness}
-            // Facets suit stone and ruin a machined edge.
-            flatShading={surface.geometry === 'rock'}
+            flatShading
           />
         </mesh>
       )}

@@ -311,49 +311,15 @@ export function rockGeometry() {
   return geo
 }
 
-/**
- * A desk top: a finite slab rather than a floor.
- *
- * This is the difference between "on a surface" and "in a room". The other
- * surfaces are a 60-unit plane, which runs all the way to the horizon and
- * covers the entire lower half of frame — so whatever is painted behind the
- * scene only ever shows as a strip along the top. A desk has a far edge, and
- * what is behind that edge is the view.
- *
- * Sized so there is more of it in front of the device than behind, the way a
- * desk is actually arranged, and with the top at y = 0 so a device sits on it
- * at the same height as on any other surface.
- */
-const DESK_W = 3.0
-const DESK_D = 1.3
-const DESK_T = 0.055
-const DESK_Z = 0.2 // pushed toward the camera; the far edge lands at -0.45
-
-let deskGeo = null
-
-export function deskGeometry() {
-  if (deskGeo) return deskGeo
-  const geo = new THREE.BoxGeometry(DESK_W, DESK_T, DESK_D)
-  geo.translate(0, -DESK_T / 2, DESK_Z)
-  deskGeo = geo
-  return geo
-}
-
-/**
- * How many times the surface texture repeats across a geometry surface.
- * A plane scales its repeat from the plane size; these do not, so the grain
- * would otherwise be stretched across the whole slab.
- */
-export const GEOMETRY_REPEAT = { desk: [DESK_W / 1.5, DESK_D / 1.5] }
-
-export const SURFACE_GEOMETRY = { rock: () => rockGeometry(), desk: () => deskGeometry() }
+/** Surfaces that are real geometry rather than a texture on a plane. */
+export const SURFACE_GEOMETRY = { rock: () => rockGeometry() }
 
 export const SURFACES = {
   studio: { label: 'Studio', color: '#ffffff', roughness: 0.92, metalness: 0, tile: 3 },
   wood: { label: 'Wood', color: '#ffffff', roughness: 0.55, metalness: 0, tile: 0.9 },
   // Semi-gloss on purpose: the reference desk carries a soft reflection of
   // whatever is standing on it, and at matte roughness that disappears.
-  walnut: { label: 'Walnut', color: '#ffffff', roughness: 0.32, metalness: 0.1, tile: 1.5, geometry: 'desk' },
+  walnut: { label: 'Walnut', color: '#ffffff', roughness: 0.32, metalness: 0.1, tile: 1.5 },
   concrete: { label: 'Concrete', color: '#ffffff', roughness: 0.85, metalness: 0, tile: 1.4 },
   marble: { label: 'Marble', color: '#ffffff', roughness: 0.28, metalness: 0.05, tile: 1.6 },
   mirror: { label: 'Mirror', color: '#0d0f14', roughness: 0.85, metalness: 0.5, tile: 1 },
