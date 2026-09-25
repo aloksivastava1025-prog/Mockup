@@ -3,6 +3,7 @@ import { useStudio } from '../store/useStudio.js'
 import { ColorField, Panel, Segmented, Select, Slider, Toggle } from './controls.jsx'
 import { ASPECTS, canEncodeMp4, dimensionsFor, downloadBlob, exportImage, exportVideo, SIZE_LABELS } from '../export/exportVideo.js'
 import { LOCATIONS, applyLocation } from '../scene/locations.js'
+import EffectsPanel from './EffectsPanel.jsx'
 import { SURFACES } from '../scene/surfaces.js'
 
 export default function RightPanel({ onCollapse }) {
@@ -145,6 +146,8 @@ export default function RightPanel({ onCollapse }) {
         <Slider label="Backlight" value={material.keyBacklight ?? 0.5} min={0} max={2} step={0.02} onChange={(v) => update('material', { keyBacklight: v })} />
         <Slider label="Glass" value={material.screenReflectivity} min={0} max={0.6} step={0.005} onChange={(v) => update('material', { screenReflectivity: v })} />
       </Panel>
+
+      <EffectsPanel />
 
       <Panel title="Location">
         <Select

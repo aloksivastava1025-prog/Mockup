@@ -129,7 +129,7 @@ const _up = new THREE.Vector3()
  * without a second control to keep in sync.
  */
 function renderPoseAt(time, animated, lens = null) {
-  const { scene, gl, camera, applyAt } = studioApi
+  const { scene, gl, camera, applyAt, renderFrame } = studioApi
   const eff = applyAt(time, { animated, driveCamera: true })
   if (lens && (lens.x || lens.y)) {
     _focus.set(...eff.camera.target)
@@ -141,7 +141,10 @@ function renderPoseAt(time, animated, lens = null) {
     camera.updateMatrixWorld()
   }
   scene.updateMatrixWorld(true)
-  gl.render(scene, camera)
+  // Through the same call the viewport uses, so the optical effects are in the
+  // export too. Calling gl.render here instead would quietly give the preview
+  // a bloom the finished file does not have.
+  renderFrame()
 }
 
 /**

@@ -103,6 +103,11 @@ const defaults = {
    * so the director can set them when it builds a film.
    */
   render: { blurSamples: 1, depth: 0 },
+  /**
+   * Optical effects, as a stack you add to rather than a fixed set of
+   * sliders — most shots want none of them and the two that do want one each.
+   */
+  effects: [],
 }
 
 const clone = (v) => JSON.parse(JSON.stringify(v))
@@ -153,6 +158,7 @@ export const DOC_KEYS = [
   'focus',
   'titles',
   'render',
+  'effects',
   'adaptScreen',
   'keyframes',
   'duration',
@@ -246,6 +252,21 @@ export const useStudio = create((set, get) => ({
       }
       return { ...historyPatch(s, null), companions: arrange(list, s.deviceId, s.spacing) }
     }),
+
+  addEffect: (type, initial) =>
+    set((s) => ({
+      ...historyPatch(s, null),
+      effects: [...s.effects, { id: `fx_${Date.now().toString(36)}`, type, amount: initial, on: true }],
+    })),
+
+  updateEffect: (id, patch, key = null) =>
+    set((s) => ({
+      ...historyPatch(s, key && `fx.${id}.${key}`),
+      effects: s.effects.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    })),
+
+  removeEffect: (id) =>
+    set((s) => ({ ...historyPatch(s, null), effects: s.effects.filter((e) => e.id !== id) })),
 
   setRender: (patch, key = null) =>
     set((s) => ({ ...historyPatch(s, key && `render.${key}`), render: { ...s.render, ...patch } })),

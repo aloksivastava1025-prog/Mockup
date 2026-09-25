@@ -105,7 +105,12 @@ export default function Phone({ rootRef, texture, screenMatRef, material, screen
               transparent
               depthWrite={false}
               color={screenColor}
-              toneMapped={false}
+              // Tone-mapped like everything else in the frame. It used to opt
+              // out so the site's colours came through untouched, but once
+              // there is a post pass the frame has two owners of tone mapping
+              // and the display alone comes out 25/255 wrong. Measured, being
+              // mapped costs the site 5/255 — a real screen in a real room is
+              // subject to the room's exposure anyway.
             />
           ) : (
             <meshStandardMaterial

@@ -10,6 +10,7 @@ import { studioApi } from './studioApi.js'
 import { SURFACES, SURFACE_GEOMETRY, surfaceTexture } from './surfaces.js'
 import { backdropTexture } from './backdrops.js'
 import { makeTitleLayer } from './titles.js'
+import { makePostPass } from './post.js'
 import Props from './Props.jsx'
 
 const DEG = Math.PI / 180
@@ -456,6 +457,8 @@ function Rig() {
   const titleMatRef = useRef()
   const titleLayer = useMemo(() => makeTitleLayer(), [])
   useEffect(() => () => titleLayer.dispose(), [titleLayer])
+  const post = useMemo(() => makePostPass(), [])
+  useEffect(() => () => post.dispose(), [post])
   const { camera, gl, scene, invalidate } = useThree()
 
   const deviceId = useStudio((s) => s.deviceId)
@@ -603,7 +606,7 @@ function Rig() {
     studioApi.camera = camera
     studioApi.canvas = gl.domElement
     studioApi.applyAt = applyAt
-    studioApi.renderFrame = () => gl.render(scene, camera)
+    studioApi.renderFrame = () => post.render(gl, scene, camera, useStudio.getState().effects)
     studioApi.markScreenDirty = () => screenSource?.redraw()
     studioApi.setSharpTexture = (on) => screenSource?.setSharp(on)
     // Publish from here rather than main.jsx: under HMR the two files can end
@@ -612,7 +615,7 @@ function Rig() {
     return () => {
       if (studioApi.applyAt === applyAt) studioApi.applyAt = null
     }
-  }, [gl, scene, camera, applyAt, screenSource])
+  }, [gl, scene, camera, applyAt, screenSource, post])
 
   // Numeric camera edits have to reach the camera even while orbit is on.
   // Orbit owns the camera between drags, so anything typed into the panel (or
@@ -668,6 +671,8 @@ function Rig() {
     }
   }
 
+  // Priority 1 takes rendering away from R3F, which is the only way to put a
+  // pass between the scene and the canvas.
   useFrame((_, delta) => {
     const s = useStudio.getState()
     const exporting = !!s.exporting
@@ -737,7 +742,10 @@ function Rig() {
         }
       }
     }
-  })
+
+    // We own the frame now, so nothing else is going to draw it.
+    post.render(gl, scene, camera, s.effects)
+  }, 1)
 
   // Only mirror the camera into the store for changes the user actually made —
   // otherwise driving the camera from the timeline would write itself back in.
