@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { Panel } from './controls.jsx'
-import { EFFECTS, EFFECT_LIST } from '../scene/post.js'
+import { EFFECTS, EFFECT_GROUPS } from '../scene/post.js'
 
 /**
  * Effects as a stack you build, not a wall of sliders.
@@ -17,10 +17,12 @@ export default function EffectsPanel() {
   const updateEffect = useStudio((s) => s.updateEffect)
   const removeEffect = useStudio((s) => s.removeEffect)
   const [open, setOpen] = useState(false)
+  const [group, setGroup] = useState(null)
 
   const add = (id) => {
     addEffect(id, EFFECTS[id].initial)
     setOpen(false)
+    setGroup(null)
   }
 
   return (
@@ -64,15 +66,34 @@ export default function EffectsPanel() {
       })}
 
       <div className="fx-add">
-        <button className="btn wide" onClick={() => setOpen((o) => !o)}>
+        <button
+          className="btn wide"
+          onClick={() => {
+            setOpen((o) => !o)
+            setGroup(null)
+          }}
+        >
           {open ? 'Close' : '+  Add effect'}
         </button>
         {open && (
           <div className="fx-menu">
-            {EFFECT_LIST.map((f) => (
-              <button key={f.id} onClick={() => add(f.id)}>
-                {f.label}
-              </button>
+            {EFFECT_GROUPS.map((g) => (
+              <div key={g.id} className="fx-group">
+                <button
+                  className={`fx-group-head ${group === g.id ? 'open' : ''}`}
+                  onClick={() => setGroup(group === g.id ? null : g.id)}
+                >
+                  <span className="chev">▶</span>
+                  {g.label}
+                  <span className="count">{g.items.length}</span>
+                </button>
+                {group === g.id &&
+                  g.items.map((id) => (
+                    <button key={id} className="fx-item" onClick={() => add(id)}>
+                      {EFFECTS[id].label}
+                    </button>
+                  ))}
+              </div>
             ))}
           </div>
         )}

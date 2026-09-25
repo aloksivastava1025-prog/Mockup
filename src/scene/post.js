@@ -154,6 +154,19 @@ export const EFFECTS = {
   // background masked properly, and half of it is worse than none.
 }
 
+/**
+ * The add menu, grouped.
+ *
+ * A flat list of nine was already enough to make someone read all nine to
+ * find one. Grouped and collapsed, you pick the kind of thing you want first
+ * and then the thing — and the list can grow without the menu getting worse.
+ */
+export const EFFECT_GROUPS = [
+  { id: 'colour', label: 'Colour', items: ['exposure', 'contrast', 'saturation', 'temperature'] },
+  { id: 'lens', label: 'Lens', items: ['bloom', 'vignette', 'chroma', 'fisheye'] },
+  { id: 'film', label: 'Film', items: ['grain'] },
+]
+
 export const EFFECT_LIST = Object.entries(EFFECTS).map(([id, e]) => ({ id, label: e.label }))
 
 export function makePostPass() {

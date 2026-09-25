@@ -388,6 +388,22 @@ select:focus {
   color: var(--text); cursor: pointer;
 }
 .fx-menu button:hover { background: var(--field-hover); }
+.fx-group { display: grid; gap: 1px; }
+.fx-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.fx-group-head .chev {
+  font-size: 7px;
+  color: var(--muted);
+  transition: transform 0.12s ease;
+}
+.fx-group-head.open .chev { transform: rotate(90deg); }
+.fx-group-head .count { margin-left: auto; font-size: 9.5px; color: var(--muted); }
+.fx-item { padding-left: 20px !important; color: var(--label) !important; }
+.fx-item:hover { color: var(--text) !important; }
 
 /* ---------- focus areas ---------- */
 .focus-box {
