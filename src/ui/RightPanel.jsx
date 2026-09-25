@@ -270,7 +270,7 @@ export default function RightPanel({ onCollapse }) {
         <Toggle label="Draft" value={draft} onChange={setDraft} />
         <p className="hint">
           {draft
-            ? 'Small, 24fps, no mipmaps, no blur — roughly 3x faster for checking timing.'
+            ? 'Small, 24fps, no mipmaps, no blur. On a video source most of the time goes on decoding it, not on drawing, so expect roughly a fifth off — not the several times faster the smaller frame suggests.'
             : 'Full resolution and sharpening. Slower; use Draft to check timing first.'}
         </p>
 
