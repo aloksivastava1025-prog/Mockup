@@ -70,6 +70,25 @@ export default function LeftPanel({ onCollapse }) {
     })
   }
 
+  /**
+   * Put the aim point back on the device.
+   *
+   * Every orbital move — dolly, orbit, arc, crane — is built around
+   * `camera.target`, not around the device: `buildMove` reads
+   * `orbitOf(camera.position, camera.target)` and swings from there. So the
+   * moment the device is moved away from the aim point, a dolly in closes on
+   * empty air and an orbit swings the device across the frame instead of
+   * turning it on the spot. Nothing is broken; the pivot is just somewhere
+   * else, and there was no way to say "put it back".
+   */
+  const aimAtDevice = () => {
+    const frame = DEVICES[deviceId]?.frame
+    const ty = device.position[1] + (frame?.ty ?? 0.12) * device.scale
+    update('camera', {
+      target: [+device.position[0].toFixed(4), +ty.toFixed(4), +device.position[2].toFixed(4)],
+    })
+  }
+
   return (
     <aside className="sidebar left">
       <div className="panel-bar left">
@@ -258,11 +277,21 @@ export default function LeftPanel({ onCollapse }) {
       <SlotsPanel />
 
       <Panel title="Transform" right={<ResetBtn group="device" />}>
+        {/*
+          Y here moves the device and leaves the camera alone, unlike Float.
+
+          It used to route to setFloat, which made the two controls the same
+          thing under two names — and since Float deliberately walks the
+          camera along with the device to hold the framing, the effect was
+          that nothing on screen moved. There was then no way at all to drop
+          the device lower in frame, which is exactly what placing it onto a
+          background photograph needs.
+        */}
         <Vec3
           label="Position"
           value={device.position}
           step={0.01}
-          onChange={(i, v) => (i === 1 ? setFloat(v) : setAxis('device', 'position', i, v))}
+          onChange={(i, v) => setAxis('device', 'position', i, v)}
         />
         <Vec3 label="Rotation" value={device.rotation} step={1} onChange={(i, v) => setAxis('device', 'rotation', i, v)} />
         <Slider
@@ -296,14 +325,33 @@ export default function LeftPanel({ onCollapse }) {
         />
         {device.position[1] > 0.001 && (
           <p className="hint">
-            Off the surface, with the camera rising to keep it framed. The contact shadow spreads
-            and fades with height — turn the Floor off for a shot against nothing but the backdrop.
+            Off the surface, with the camera rising to keep it framed — so the device holds its
+            place in the shot. To move it <em>within</em> the shot, use Position Y, which leaves the
+            camera where it is. The contact shadow spreads and fades with height; turn the Floor
+            off for a shot against nothing but the backdrop.
           </p>
         )}
         <Slider label="Scale" value={device.scale} min={0.2} max={4} step={0.01} onChange={(v) => update('device', { scale: v })} />
       </Panel>
 
-      <Panel title="Camera" right={<ResetBtn group="camera" />}>
+      <Panel
+        title="Camera"
+        right={
+          <>
+            <button
+              className="btn ghost sm"
+              title="Put the aim point back on the device, so moves pivot around it"
+              onClick={(e) => {
+                e.stopPropagation()
+                aimAtDevice()
+              }}
+            >
+              aim
+            </button>
+            <ResetBtn group="camera" />
+          </>
+        }
+      >
         <Toggle label="Orbit" value={orbitEnabled} onChange={setOrbitEnabled} />
         <Vec3 label="Position" value={camera.position} step={0.05} onChange={(i, v) => setAxis('camera', 'position', i, v)} />
         <Vec3 label="Look at" value={camera.target} step={0.05} onChange={(i, v) => setAxis('camera', 'target', i, v)} />

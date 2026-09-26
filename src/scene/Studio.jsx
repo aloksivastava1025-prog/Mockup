@@ -261,6 +261,18 @@ function Ground() {
   // under something floating in mid-air reads as a mistake. Spread it, fade it,
   // and widen the catcher's reach so it does not simply vanish.
   const lift = Math.max(0, pose.position[1] ?? 0)
+  /*
+   * Below the origin the shadow travels with the device instead of staying
+   * put.
+   *
+   * Above it, the origin is the floor and the device is hovering over it, so
+   * the shadow belongs on the floor — that is what `lift` handles. Below it
+   * there is no floor to stay on: the only reason to put a device under the
+   * origin is to line its base up with a ground line in a background
+   * photograph, and the contact patch has to land there too. Left at zero it
+   * hung in the air above the machine it was supposed to be under.
+   */
+  const shadowY = Math.min(0, pose.position[1] ?? 0)
   const shadowOpacity = lighting.shadowOpacity / (1 + lift * 6)
   const shadowBlur = lighting.shadowBlur * (1 + lift * 8)
   // The catcher is a fixed square centred on the origin, so a companion placed
@@ -332,7 +344,7 @@ function Ground() {
       {lighting.shadows && (
         <ContactShadows
           key={isPlaying ? 'animating' : poseKey}
-          position={[0, 0.001, 0]}
+          position={[0, shadowY + 0.001, 0]}
           opacity={shadowOpacity}
           scale={shadowScale}
           blur={shadowBlur}
@@ -578,13 +590,28 @@ function Rig() {
         const ih = bg.image?.naturalHeight || bg.image?.height || 1
         const frame = gl.domElement.width / gl.domElement.height
         const image = iw / ih
+        // Cover fit first: the largest crop of the photo that fills the frame
+        // without distorting it.
+        let rx, ry
         if (image > frame) {
-          bg.repeat.set(frame / image, 1)
-          bg.offset.set((1 - frame / image) / 2, 0)
+          rx = frame / image
+          ry = 1
         } else {
-          bg.repeat.set(1, image / frame)
-          bg.offset.set(0, (1 - image / frame) / 2)
+          rx = 1
+          ry = image / frame
         }
+        // Then the user's own framing on top. Zoom shrinks the sampled window
+        // (closer in), and X/Y slide it, so the photo can be moved behind a
+        // device that never has to leave the origin.
+        const bgs = useStudio.getState().background
+        const zoom = Math.max(0.2, bgs.imageZoom ?? 1)
+        rx /= zoom
+        ry /= zoom
+        bg.repeat.set(rx, ry)
+        bg.offset.set(
+          (1 - rx) / 2 + (bgs.imageX ?? 0),
+          (1 - ry) / 2 - (bgs.imageY ?? 0),
+        )
       }
 
       // Titles. Drawn at the drawing buffer's own size so type is rendered at
@@ -811,12 +838,24 @@ function Rig() {
           textureAspect={effectiveAspect}
         />
       ))}
+      {/*
+        minDistance was 0.25, and it was an invisible wall.
+
+        A dead-on hero shot of a laptop — the kind where the trackpad runs
+        away from the viewer and the base fills the bottom of the frame —
+        sits about 0.22 from the subject on a wide lens. With the old floor
+        the controls silently clamped the camera back to 0.25 every time the
+        store pushed a closer position, so the shot was simply unreachable
+        and nothing said why: the numbers in the panel read back correctly
+        while the camera sat somewhere else entirely. The device is 0.34
+        across, so 0.05 still stops anyone ending up inside it.
+      */}
       <OrbitControls
         ref={controlsRef}
         enabled={orbitEnabled && !timelineOwnsCamera}
         enableDamping
         dampingFactor={0.08}
-        minDistance={0.25}
+        minDistance={0.05}
         maxDistance={12}
         onStart={() => {
           draggingRef.current = true

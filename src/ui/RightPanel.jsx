@@ -3,6 +3,7 @@ import { useStudio } from '../store/useStudio.js'
 import { ColorField, Panel, Segmented, Select, Slider, Toggle } from './controls.jsx'
 import { ASPECTS, canEncodeMp4, dimensionsFor, downloadBlob, exportImage, exportVideo, SIZE_LABELS } from '../export/exportVideo.js'
 import { LOCATIONS, applyLocation } from '../scene/locations.js'
+import { SHOTS, applyShot } from '../scene/shots.js'
 import EffectsPanel from './EffectsPanel.jsx'
 import { SURFACES } from '../scene/surfaces.js'
 
@@ -149,6 +150,22 @@ export default function RightPanel({ onCollapse }) {
 
       <EffectsPanel />
 
+      {/*
+        Shots sit above Location because they are the larger claim: a
+        Location says where the device is, a Shot says how it is being
+        photographed — camera, lens, lid, finish and grade together.
+      */}
+      <Panel title="Shot">
+        {Object.entries(SHOTS).map(([id, s]) => (
+          <React.Fragment key={id}>
+            <button className="btn wide" onClick={() => applyShot(id, useStudio)}>
+              {s.label}
+            </button>
+            <p className="hint">{s.hint}</p>
+          </React.Fragment>
+        ))}
+      </Panel>
+
       <Panel title="Location">
         <Select
           label="Preset"
@@ -195,9 +212,57 @@ export default function RightPanel({ onCollapse }) {
             </button>
             <p className="hint">
               {backdrop
-                ? `${backdrop.name} — kept at its own aspect whatever you export to. Place the device over it with Position, Tilt and Float; turn the Floor off so it sits on your image rather than on a surface.`
+                ? `${backdrop.name} — kept at its own aspect whatever you export to. Turn the Floor off so it sits on your image rather than on a surface.`
                 : 'Your own image behind the device.'}
             </p>
+            {backdrop && (
+              <>
+                {/*
+                  Move the picture, not the product.
+
+                  The old advice here was to place the device over the image
+                  with Position and Float, which is the wrong thing to move:
+                  it walks the device off the camera's aim point, so dollies
+                  and orbits start pivoting around empty air, and it drags
+                  the contact shadow along with it. Sliding the backdrop
+                  instead leaves the device at the origin where everything
+                  else already expects it.
+                */}
+                <Slider
+                  label="Across"
+                  value={background.imageX ?? 0}
+                  min={-0.5}
+                  max={0.5}
+                  step={0.005}
+                  precision={3}
+                  onChange={(v) => update('background', { imageX: v })}
+                />
+                <Slider
+                  label="Up"
+                  value={background.imageY ?? 0}
+                  min={-0.5}
+                  max={0.5}
+                  step={0.005}
+                  precision={3}
+                  onChange={(v) => update('background', { imageY: v })}
+                />
+                <Slider
+                  label="Zoom"
+                  value={background.imageZoom ?? 1}
+                  min={0.5}
+                  max={4}
+                  step={0.01}
+                  unit="×"
+                  precision={2}
+                  onChange={(v) => update('background', { imageZoom: v })}
+                />
+                <p className="hint">
+                  Slide the photo until its ground line meets the base of the device. Moving the
+                  picture keeps the device on the camera's aim point, so Dolly in and Orbit still
+                  pivot around it.
+                </p>
+              </>
+            )}
           </>
         )}
         {background.mode === 'gradient' && (

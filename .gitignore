@@ -5,3 +5,14 @@ dist
 
 # Local scratch for loading test footage into the dev server
 public/
+
+# Rendered deliverables and scratch. These are outputs of the app and of the
+# /brag skill, not source — hundreds of megabytes of video that would bloat
+# the history for nothing.
+brag-output/
+brag-output-*/
+work-dbg/
+
+# The two-minute Cue Kit film is its own project that happens to live here:
+# its own node_modules, its own captured media.
+cuekit-film/

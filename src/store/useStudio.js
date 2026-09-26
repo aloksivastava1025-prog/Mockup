@@ -69,6 +69,22 @@ const defaults = {
     surface: 'studio', // see scene/surfaces.js
     props: false, // desk dressing; gives wide and aerial framings a sense of place
     groundColor: '#d4d4d4',
+    /**
+     * Where the backdrop photo sits behind the device, and how close in.
+     *
+     * Without these the only way to line a photo's ground line up with the
+     * device was to drag the device around the world instead — which is the
+     * wrong thing to move. Doing that walks the device away from the camera's
+     * aim point, so every orbital move starts pivoting around empty air, and
+     * it takes the contact shadow with it. Moving the picture leaves the
+     * device, the camera and the shadow exactly where they belong.
+     *
+     * X and Y are fractions of the frame; zoom is a multiplier on the
+     * cover fit, so 1 is the whole picture and 2 is twice as close.
+     */
+    imageX: 0,
+    imageY: 0,
+    imageZoom: 1,
     // Distance haze, set by a location that needs it. See useFog in Studio.jsx.
     fog: null,
   },

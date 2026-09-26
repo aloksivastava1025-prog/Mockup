@@ -1,6 +1,7 @@
 import MacBook, { macbookMeta } from './MacBook.jsx'
 import Monitor, { monitorMeta } from './Monitor.jsx'
 import Frame, { frameMeta } from './Frame.jsx'
+import Billboard, { billboardMeta } from './Billboard.jsx'
 import Phone, { phoneMeta } from './Phone.jsx'
 import Tablet, { tabletMeta } from './Tablet.jsx'
 
@@ -23,6 +24,9 @@ export const DEVICES = {
   tablet: { ...tabletMeta, Component: Tablet },
   monitor: { ...monitorMeta, Component: Monitor },
   phone: { ...phoneMeta, Component: Phone },
+  // Ten times a laptop, because that is what one is. Everything here shares
+  // one scale, so standing the two together shows the difference honestly.
+  billboard: { ...billboardMeta, Component: Billboard },
   // Not a device: the footage on its own, for when a body around it would
   // only be a costume.
   frame: { ...frameMeta, Component: Frame },
