@@ -65,6 +65,17 @@ export default function Timeline() {
 
   const selectedKf = keyframes.find((k) => k.id === selected) ?? null
 
+  const ramps = (() => {
+    const ks = [...keyframes].sort((a, b) => a.time - b.time)
+    const out = []
+    for (let i = 0; i < ks.length - 1; i++) {
+      const sp = ks[i].speed ?? 1
+      if (Math.abs(sp - 1) < 0.01) continue
+      out.push({ id: ks[i].id, from: ks[i].time, to: ks[i + 1].time, speed: sp })
+    }
+    return out
+  })()
+
   const ticks = []
   const step = duration <= 4 ? 0.5 : duration <= 12 ? 1 : duration <= 30 ? 2 : duration <= 90 ? 10 : 15
   for (let t = 0; t <= duration + 1e-6; t += step) ticks.push(+t.toFixed(2))
@@ -166,6 +177,18 @@ export default function Timeline() {
               }
             }}
           >
+          </div>
+        ))}
+        {/* Ramped segments get a bar under the track, so a retime is visible
+            without opening every marker. */}
+        {ramps.map((r) => (
+          <div
+            key={r.id}
+            className="kf-ramp"
+            style={{ left: `${(r.from / duration) * 100}%`, width: `${((r.to - r.from) / duration) * 100}%` }}
+            title={`${r.speed}x over ${(r.to - r.from).toFixed(2)}s`}
+          >
+            <span>{r.speed}×</span>
           </div>
         ))}
         <div className="playhead" style={{ left: `${(playhead / duration) * 100}%` }} />

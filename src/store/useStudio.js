@@ -571,6 +571,48 @@ export const useStudio = create((set, get) => ({
       keyframes: s.keyframes.map((k) => (k.id === id ? { ...k, ease } : k)),
     })),
 
+  /**
+   * Speed for the segment leaving a keyframe.
+   *
+   * Retiming, not easing. Easing changes how a move is distributed inside a
+   * fixed span; a speed ramp changes the span itself, so half speed really is
+   * twice as long on the timeline and everything after it moves along.
+   *
+   * The untimed length of the segment is not stored anywhere - it is
+   * recovered as `duration x currentSpeed`. That keeps one source of truth
+   * and means repeated edits cannot drift: going 1 -> 0.5 -> 2 lands exactly
+   * where a single move to 2 would.
+   */
+  setKeyframeSpeed: (id, speed) =>
+    set((s) => {
+      const ks = [...s.keyframes].sort((a, b) => a.time - b.time)
+      const i = ks.findIndex((k) => k.id === id)
+      // The last keyframe has no segment after it, and a deliberate hold (two
+      // keyframes at the same time) has no length to stretch.
+      if (i < 0 || i === ks.length - 1) return {}
+      const span = ks[i + 1].time - ks[i].time
+      if (span <= 1e-4) return {}
+
+      const current = ks[i].speed ?? 1
+      const next = Math.min(6, Math.max(0.1, speed))
+      const shift = (span * current) / next - span
+
+      const keyframes = ks.map((k, j) =>
+        j === i
+          ? { ...k, speed: +next.toFixed(3) }
+          : j > i
+          ? { ...k, time: +(k.time + shift).toFixed(3) }
+          : k,
+      )
+      const end = keyframes[keyframes.length - 1].time
+      return {
+        ...historyPatch(s, `kf.speed.${id}`),
+        keyframes,
+        duration: Math.max(s.duration, Math.ceil(end * 2) / 2),
+        previewLive: false,
+      }
+    }),
+
   /** Re-record a keyframe from whatever the scene looks like now. */
   restampKeyframe: (id) =>
     set((s) => {

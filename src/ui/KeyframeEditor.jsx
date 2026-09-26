@@ -25,6 +25,8 @@ export default function KeyframeEditor({ kf, trackRef, duration, onClose }) {
   const removeKeyframe = useStudio((s) => s.removeKeyframe)
   const setKeyframeEase = useStudio((s) => s.setKeyframeEase)
   const setKeyframeCamera = useStudio((s) => s.setKeyframeCamera)
+  const setKeyframeSpeed = useStudio((s) => s.setKeyframeSpeed)
+  const keyframes = useStudio((s) => s.keyframes)
   const [box, setBox] = useState(null)
 
   useLayoutEffect(() => {
@@ -47,6 +49,13 @@ export default function KeyframeEditor({ kf, trackRef, duration, onClose }) {
   }, [kf.time, duration, trackRef])
 
   if (!box) return null
+
+  // The segment this keyframe owns: the gap to whichever keyframe is next.
+  const sorted = [...keyframes].sort((a, b) => a.time - b.time)
+  const idx = sorted.findIndex((k) => k.id === kf.id)
+  const nextKf = idx >= 0 ? sorted[idx + 1] : null
+  const span = nextKf ? +(nextKf.time - kf.time).toFixed(2) : 0
+  const speed = kf.speed ?? 1
 
   const cam = kf.state.camera
   const orbit = orbitOf(cam.position, cam.target)
@@ -101,6 +110,24 @@ export default function KeyframeEditor({ kf, trackRef, duration, onClose }) {
           </div>
         </div>
 
+        {nextKf && span > 0.01 && (
+          <>
+            <Slider
+              label="Speed"
+              value={speed}
+              min={0.25}
+              max={4}
+              step={0.05}
+              unit="×"
+              onChange={(v) => setKeyframeSpeed(kf.id, v)}
+            />
+            <p className="hint">
+              This stretches the {span}s up to the next keyframe and slides everything after it
+              along. Under 1 is slow motion; easing changes the feel inside a segment, this changes
+              how long the segment is.
+            </p>
+          </>
+        )}
         <Slider
           label="Zoom"
           value={cam.fov}

@@ -712,6 +712,27 @@ select:focus {
 }
 .track .ticks { position: absolute; inset: 0; pointer-events: none; }
 .track .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: #ececec; }
+/* A retimed segment, marked under the track. Low contrast: it is a note
+   about the timeline, not a control. */
+.kf-ramp {
+  position: absolute;
+  bottom: -2px;
+  height: 3px;
+  background: var(--accent, #2d8cff);
+  opacity: 0.75;
+  border-radius: 2px;
+  pointer-events: none;
+}
+.kf-ramp span {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  color: var(--accent, #2d8cff);
+  white-space: nowrap;
+}
+
 .track .tick span { position: absolute; top: 3px; left: 4px; font-size: 9.5px; color: var(--muted); }
 /* The marker is an unrotated box with the diamond drawn inside it. The whole
    thing used to be rotate(45deg), which tilted the popover with it — and the
