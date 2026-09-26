@@ -50,21 +50,8 @@ export default function CameraMoves() {
 
   return (
     <>
-      <Slider label="Move length" value={seconds} min={0.4} max={12} step={0.1} precision={1} unit="s" onChange={setSeconds} />
-      <Slider label="Move size" value={amount} min={0.2} max={2.5} step={0.05} precision={2} onChange={setAmount} />
-      <Segmented
-        label="Direction"
-        value={String(dir)}
-        options={[
-          { value: '-1', label: '◀ Left' },
-          { value: '1', label: 'Right ▶' },
-        ]}
-        onChange={(v) => setDir(Number(v))}
-      />
       <p className="hint">
         Moves start from the framing you have now and are written onto the timeline at the playhead.
-        Direction mirrors the sideways ones — an orbit, an arc, a truck. It does nothing to a dolly
-        or a crane, where the opposite already has its own name.
       </p>
       <div className="fx-menu" style={{ position: 'static', boxShadow: 'none' }}>
         {MOVE_GROUPS.map((g) => {
@@ -79,12 +66,42 @@ export default function CameraMoves() {
                 {g.label}
                 <span className="count">{items.length}</span>
               </button>
-              {open === g.id &&
-                items.map(([id, m]) => (
-                  <button key={id} className="fx-item" onClick={() => add(id)}>
-                    {m.label}
-                  </button>
-                ))}
+              {open === g.id && (
+                <>
+                  {/*
+                    These three belong to the move you are about to pick, not
+                    to the camera. Sitting above the menu as plain sliders
+                    they read as live settings, and people reached for them
+                    expecting the move already on the timeline to change. They
+                    only appear once a group is open, next to the thing they
+                    affect.
+                  */}
+                  <div className="fx-newmove">
+                    <Slider
+                      label="Length" value={seconds} min={0.4} max={12} step={0.1}
+                      precision={1} unit="s" onChange={setSeconds}
+                    />
+                    <Slider
+                      label="Size" value={amount} min={0.2} max={2.5} step={0.05}
+                      precision={2} onChange={setAmount}
+                    />
+                    <Segmented
+                      label="Direction"
+                      value={String(dir)}
+                      options={[
+                        { value: '-1', label: '◀ Left' },
+                        { value: '1', label: 'Right ▶' },
+                      ]}
+                      onChange={(v) => setDir(Number(v))}
+                    />
+                  </div>
+                  {items.map(([id, m]) => (
+                    <button key={id} className="fx-item" onClick={() => add(id)}>
+                      {m.label}
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
           )
         })}
@@ -115,7 +132,7 @@ export default function CameraMoves() {
       {live && (
         <div className="subgroup">
           <div className="field">
-            <label>Adjust</label>
+            <label>On the timeline</label>
             <span className="badge">{MOVES[lastMove.id].label}</span>
           </div>
           <Slider

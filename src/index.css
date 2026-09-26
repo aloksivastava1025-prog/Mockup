@@ -375,6 +375,15 @@ select:focus {
   cursor: pointer;
 }
 
+/* The settings for the move about to be added, shown inside the open group
+   so they cannot be mistaken for live camera controls. */
+.fx-newmove {
+  padding: 6px 8px 8px;
+  margin: 0 4px 4px;
+  border-left: 2px solid var(--line-strong);
+  background: rgba(0, 0, 0, 0.02);
+}
+
 /* ---------- effects stack ---------- */
 .fx-row { display: flex; align-items: center; gap: 4px; }
 .fx-row.muted { opacity: 0.45; }

@@ -38,6 +38,19 @@ const Z_SCREEN = 0.5
 const Z_ISLAND = 0.7
 const Z_SHEEN = 0.9
 
+/**
+ * And the same again on the back, measured from the body's rear face.
+ *
+ * The back carries four surfaces now - glass, logo, camera plateau, lenses -
+ * and they are stacked outward in that order. Authored in millimetres and
+ * scaled by ~0.001 like everything else, so the gaps look generous here and
+ * are fractions of a world unit once placed.
+ */
+const BACK_GLASS_T = 0.5
+const Z_BACK_GLASS = 0.25   // half its own thickness: sits flush at the body
+const Z_LOGO = 0.75
+const Z_PLATEAU = 1.4
+
 export const phoneMeta = {
   id: 'phone',
   label: 'Phone',
@@ -61,10 +74,21 @@ export default function Phone({ rootRef, texture, screenMatRef, material, screen
     return new THREE.Color(b, b, b)
   }, [screen.brightness])
 
+  // Polished, not brushed. A phone rail is the shiniest surface in the set and
+  // the extra roughness the other bodies want makes it read as plastic.
   const body = {
     color: material.bodyColor,
-    roughness: Math.min(1, material.bodyRoughness + 0.12),
-    metalness: material.bodyMetalness,
+    roughness: Math.max(0.05, material.bodyRoughness * 0.7),
+    metalness: Math.max(material.bodyMetalness, 0.85),
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.12,
+  }
+  const backGlass = {
+    color: material.bodyColor,
+    roughness: 0.28,
+    metalness: 0.25,
+    clearcoat: 1,
+    clearcoatRoughness: 0.18,
   }
 
   return (
@@ -81,7 +105,7 @@ export default function Phone({ rootRef, texture, screenMatRef, material, screen
           castShadow
           receiveShadow
         >
-          <meshStandardMaterial {...body} />
+          <meshPhysicalMaterial {...body} />
         </RoundedBox>
 
         {/* black glass, set behind the body's front face */}
@@ -155,35 +179,86 @@ export default function Phone({ rootRef, texture, screenMatRef, material, screen
         ].map((b) => (
           <mesh key={b.y} position={[-W / 2 - 0.4, b.y, 0]}>
             <boxGeometry args={[1.2, b.h, 3.4]} />
-            <meshStandardMaterial {...body} />
+            <meshPhysicalMaterial {...body} />
           </mesh>
         ))}
         <mesh position={[W / 2 + 0.4, H - 48, 0]}>
           <boxGeometry args={[1.2, 15, 3.4]} />
-          <meshStandardMaterial {...body} />
+          <meshPhysicalMaterial {...body} />
         </mesh>
 
-        {/* rear camera plateau */}
-        <group position={[-W / 2 + 19, H - 20, -D / 2 - 0.6]}>
-          <RoundedBox args={[30, 30, 1.4]} radius={7} smoothness={4}>
-            <meshStandardMaterial {...body} />
+        {/* back glass, proud of the body by its own thickness */}
+        <RoundedBox
+          args={[W - 1.2, H - 1.2, BACK_GLASS_T]}
+          radius={safeRadius([W - 1.2, H - 1.2, BACK_GLASS_T], FRAME_R - 0.6)}
+          smoothness={5}
+          position={[0, H / 2, -D / 2 - Z_BACK_GLASS]}
+        >
+          <meshPhysicalMaterial {...backGlass} />
+        </RoundedBox>
+
+        {/* logo: a disc a shade darker, catching the light differently */}
+        <mesh position={[0, H / 2, -D / 2 - Z_LOGO]} rotation={[0, Math.PI, 0]}>
+          <circleGeometry args={[8.5, 48]} />
+          <meshPhysicalMaterial
+            color={material.bodyColor}
+            roughness={0.08}
+            metalness={0.95}
+            clearcoat={1}
+          />
+        </mesh>
+
+        {/*
+          Rear camera. Three lenses in the Pro arrangement - two down the left,
+          one at the right middle - with the flash above it and the LiDAR
+          below, which is the detail that stops a phone render reading as a
+          generic slab.
+        */}
+        <group position={[-W / 2 + 19, H - 21, -D / 2 - Z_PLATEAU]}>
+          <RoundedBox args={[34, 34, 1.6]} radius={9} smoothness={5}>
+            <meshPhysicalMaterial
+              color={material.bodyColor}
+              roughness={0.34}
+              metalness={0.4}
+              clearcoat={0.5}
+            />
           </RoundedBox>
+
           {[
-            [-6.5, 6.5],
-            [6.5, 6.5],
-            [0, -6.5],
+            [-8, 8],
+            [-8, -8],
+            [8, 0],
           ].map(([lx, ly]) => (
-            <group key={`${lx}_${ly}`} position={[lx, ly, -1.5]}>
+            <group key={`${lx}_${ly}`} position={[lx, ly, -1.7]}>
+              {/* ring */}
               <mesh rotation={[Math.PI / 2, 0, 0]}>
-                <cylinderGeometry args={[5.4, 5.4, 1.8, 24]} />
-                <meshStandardMaterial color="#26262a" roughness={0.3} metalness={0.8} />
+                <cylinderGeometry args={[5.8, 5.8, 2.0, 32]} />
+                <meshPhysicalMaterial color="#3a3a3f" roughness={0.12} metalness={1} />
               </mesh>
-              <mesh position={[0, 0, -1.0]} rotation={[Math.PI / 2, 0, 0]}>
-                <cylinderGeometry args={[3.9, 3.9, 0.4, 24]} />
-                <meshPhysicalMaterial color="#05060a" roughness={0.08} metalness={0.2} clearcoat={1} />
+              {/* glass, sunk inside the ring so the ring reads as a wall */}
+              <mesh position={[0, 0, -1.1]} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[4.6, 4.6, 0.5, 32]} />
+                <meshPhysicalMaterial
+                  color="#04050a"
+                  roughness={0.03}
+                  metalness={0.3}
+                  clearcoat={1}
+                  clearcoatRoughness={0.02}
+                />
               </mesh>
             </group>
           ))}
+
+          {/* flash */}
+          <mesh position={[8, 10.2, -1.2]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[2.7, 2.7, 1.2, 24]} />
+            <meshStandardMaterial color="#ffeedd" emissive="#2a1a08" roughness={0.4} />
+          </mesh>
+          {/* LiDAR */}
+          <mesh position={[8, -10.2, -1.2]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[2.7, 2.7, 1.2, 24]} />
+            <meshPhysicalMaterial color="#0a0a0d" roughness={0.16} metalness={0.5} clearcoat={1} />
+          </mesh>
         </group>
 
         {/* screen spill. Intensity and distance are world-space and must not be
