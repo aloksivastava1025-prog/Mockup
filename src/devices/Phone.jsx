@@ -1,55 +1,97 @@
 import React, { useMemo } from 'react'
 import * as THREE from 'three'
-import { RoundedBox } from '@react-three/drei'
 import { cornerMask } from './screenMask.js'
 
 /**
- * Modern 6.1" phone. Authored in millimetres and scaled into world space, so it
- * sits at a believable size next to the laptop.
+ * iPhone 15 Pro, ported from the supplied reference build.
  *
- * Unlike the laptops there is no lid: `aspectScale` stretches the body along Y,
- * which is the display's height axis here.
+ * Every dimension below is the reference's own number multiplied by S, so
+ * the port is auditable: the reference authors the body as 3.2 x 6.7 with a
+ * 0.42 corner, and that is what is written here. S converts its arbitrary
+ * units into the millimetres this project authors in - 6.7 reference units
+ * is a 146.7mm phone, which fixes the factor at 21.9.
+ *
+ * The body is an extruded rounded shape with a bevel, as in the reference,
+ * not a RoundedBox. A bevelled extrusion is what gives the rail its bright
+ * edge highlight, and it is the main reason the reference reads as metal.
  */
-const W = 71.5
-const H = 146.7
-const D = 7.8
-const FRAME_R = 11
+const S = 21.9 // reference unit -> mm
 
-const BEZEL = 3.4
-const SCREEN_W = W - BEZEL * 2
-const SCREEN_H = H - BEZEL * 2
+const W = 3.2 * S // 70.1
+const H = 6.7 * S // 146.7
+/**
+ * The one number not taken literally.
+ *
+ * The reference is 0.12 units deep, which is 2.6mm - about a third of a real
+ * phone. On its own white page that reads as stylised; in this app every
+ * device stands at true physical scale next to the others, and a 2.6mm phone
+ * beside a 16-inch laptop looks like a sheet of paper. 8.25mm is the real
+ * iPhone 15 Pro. Put `0.12 * S` back for the reference's own proportion.
+ */
+const D = 8.25
+const RADIUS = 0.42 * S // 9.2
+const BEVEL = 0.025 * S // 0.55
 
 const UNIT = 0.34 / 355 // mm -> world, the same scale every other device uses
 
-const safeRadius = (dims, r) => Math.min(r, Math.min(...dims) / 2 - 1e-4)
+/** The reference's inner bezel: a 6px inset on a 320px-wide UI. */
+const BEZEL = (6 / 320) * W // 1.31
+const SCREEN_W = W - BEZEL * 2
+const SCREEN_H = H - BEZEL * 2
 
 /**
- * Stacked front surfaces, in millimetres from the body's front face.
+ * Front and back stacks, in millimetres out from each face.
  *
- * The same rule as the tablet and the display: these are authored in mm and
- * scaled by about 0.001, so a separation that reads as generous here is tiny in
- * world units, and two faces at the same depth flicker. The phone had the worse
- * version of the bug — its glass slab sat *proud* of the body and buried the
- * display behind it — which went unnoticed only because it was never shipped.
+ * Authored in mm and scaled by ~0.001, so two surfaces on the same number
+ * flicker. The reference puts its screen at depth/2 + 0.026 and its back
+ * glass at -depth/2 - 0.012; those ratios are kept, spread far enough apart
+ * to survive the scale.
+ *
+ * The first pass put the bezel slab's front face 0.05mm behind the display,
+ * which is 5e-8 of a world unit - far under what the depth buffer can tell
+ * apart - so the black bezel won the z-fight and covered the screen
+ * completely. Half a millimetre is the working figure here, the same margin
+ * the back stack already uses and roughly what the lid needed.
  */
-const GLASS_T = 0.5
-const GLASS_INSET = 0.4
-const Z_SCREEN = 0.5
-const Z_ISLAND = 0.7
-const Z_SHEEN = 0.9
+const Z_BEZEL = 0.15
+const Z_SCREEN = 0.9
+const Z_ISLAND = 1.3
+const Z_SHEEN = 1.6
 
-/**
- * And the same again on the back, measured from the body's rear face.
- *
- * The back carries four surfaces now - glass, logo, camera plateau, lenses -
- * and they are stacked outward in that order. Authored in millimetres and
- * scaled by ~0.001 like everything else, so the gaps look generous here and
- * are fractions of a world unit once placed.
- */
-const BACK_GLASS_T = 0.5
-const Z_BACK_GLASS = 0.25   // half its own thickness: sits flush at the body
+const Z_BACK_GLASS = 0.26
 const Z_LOGO = 0.75
-const Z_PLATEAU = 1.4
+const Z_BUMP = 1.3
+
+/**
+ * The reference's `createPhoneGeometry`: a rounded rectangle traced with
+ * four arcs, extruded with a small bevel and centred.
+ */
+function roundedSlab(width, height, depth, radius, bevel = BEVEL) {
+  const shape = new THREE.Shape()
+  const x = width / 2
+  const y = height / 2
+  shape.moveTo(-x + radius, -y)
+  shape.lineTo(x - radius, -y)
+  shape.absarc(x - radius, -y + radius, radius, -Math.PI / 2, 0, false)
+  shape.lineTo(x, y - radius)
+  shape.absarc(x - radius, y - radius, radius, 0, Math.PI / 2, false)
+  shape.lineTo(-x + radius, y)
+  shape.absarc(-x + radius, y - radius, radius, Math.PI / 2, Math.PI, false)
+  shape.lineTo(-x, -y + radius)
+  shape.absarc(-x + radius, -y + radius, radius, Math.PI, Math.PI * 1.5, false)
+
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: true,
+    bevelSegments: 4,
+    steps: 1,
+    bevelSize: bevel,
+    bevelThickness: bevel,
+    curveSegments: 24,
+  })
+  geo.center()
+  return geo
+}
 
 export const phoneMeta = {
   id: 'phone',
@@ -58,211 +100,183 @@ export const phoneMeta = {
   hasLid: false,
   width: W * UNIT,
   // A phone is the least forgiving body in the set: it is already extreme in
-  // aspect, so there is very little room to stretch it before it stops reading
-  // as a phone at all.
+  // aspect, so there is very little room to stretch it before it stops
+  // reading as a phone at all.
   adaptRange: [0.85, 1.2],
-  // Framing that shows the whole device with a little room around it.
-  frame: { d: 0.42, ty: 0.075, fov: 30 },
+  frame: { d: 0.5, ty: 0.072, fov: 30 },
 }
 
 export default function Phone({ rootRef, texture, screenMatRef, material, screen, aspectScale = 1 }) {
-  // A phone with square screen corners is the giveaway that it is a render.
-  const mask = useMemo(() => cornerMask(SCREEN_W / SCREEN_H, 0.11), [])
+  const mask = useMemo(() => cornerMask(SCREEN_W / SCREEN_H, RADIUS / SCREEN_W), [])
+
+  const bodyGeo = useMemo(() => roundedSlab(W, H, D, RADIUS), [])
+  const backGlassGeo = useMemo(
+    // reference: (width - 0.015, height - 0.015, 0.02, radius - 0.01)
+    () => roundedSlab(W - 0.015 * S, H - 0.015 * S, 0.02 * S, RADIUS - 0.01 * S, 0.2),
+    [],
+  )
+  const bezelGeo = useMemo(() => roundedSlab(W - 0.3, H - 0.3, 0.25, RADIUS - 0.15, 0.05), [])
+  // reference: bump is 1.5 x 1.6 with a 0.4 corner
+  const bumpGeo = useMemo(() => roundedSlab(1.5 * S, 1.6 * S, 0.03 * S, 0.4 * S, 0.2), [])
 
   const screenColor = useMemo(() => {
     const b = screen.brightness
     return new THREE.Color(b, b, b)
   }, [screen.brightness])
 
-  // Polished, not brushed. A phone rail is the shiniest surface in the set and
-  // the extra roughness the other bodies want makes it read as plastic.
-  const body = {
+  // The reference's material set, with the user's body colour driving it.
+  const railMat = {
     color: material.bodyColor,
-    roughness: Math.max(0.05, material.bodyRoughness * 0.7),
-    metalness: Math.max(material.bodyMetalness, 0.85),
-    clearcoat: 0.6,
-    clearcoatRoughness: 0.12,
+    metalness: Math.max(material.bodyMetalness, 0.8),
+    roughness: Math.max(0.08, material.bodyRoughness * 1.5),
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.1,
   }
-  const backGlass = {
+  const backGlassMat = {
     color: material.bodyColor,
-    roughness: 0.28,
-    metalness: 0.25,
-    clearcoat: 1,
-    clearcoatRoughness: 0.18,
+    metalness: 0.3,
+    roughness: 0.3,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.2,
   }
+
+  // reference: lensZ -0.035, outer 0.26, inner 0.22, ring 0.045 / glass 0.046
+  const LENS_Z = -0.035 * S
+  const LENS_OUTER = 0.26 * S
+  const LENS_INNER = 0.22 * S
 
   return (
     <group ref={rootRef} dispose={null}>
-      {/* origin sits at the bottom edge, so the phone stands on the floor and
-          scaling Y grows it upward rather than sinking it */}
+      {/* Origin at the bottom edge, so the phone stands on the floor and
+          stretching the height grows it upward rather than sinking it. */}
       <group scale={[UNIT, UNIT * aspectScale, UNIT]}>
-        {/* frame */}
-        <RoundedBox
-          args={[W, H, D]}
-          radius={safeRadius([W, H, D], FRAME_R)}
-          smoothness={6}
-          position={[0, H / 2, 0]}
-          castShadow
-          receiveShadow
-        >
-          <meshPhysicalMaterial {...body} />
-        </RoundedBox>
-
-        {/* black glass, set behind the body's front face */}
-        <RoundedBox
-          args={[W - 1.6, H - 1.6, GLASS_T]}
-          radius={safeRadius([W - 1.6, H - 1.6, GLASS_T], FRAME_R - 0.8)}
-          smoothness={5}
-          position={[0, H / 2, D / 2 - GLASS_INSET - GLASS_T / 2]}
-        >
-          <meshStandardMaterial color={material.bezelColor} roughness={0.25} metalness={0.2} />
-        </RoundedBox>
-
-        {/* display */}
-        <mesh position={[0, H / 2, D / 2 + Z_SCREEN]} userData={{ screenSurface: true }}>
-          <planeGeometry args={[SCREEN_W, SCREEN_H]} />
-          {texture ? (
-            <meshBasicMaterial
-              ref={screenMatRef}
-              map={texture}
-              alphaMap={mask}
-              transparent
-              depthWrite={false}
-              color={screenColor}
-              // Tone-mapped like everything else in the frame. It used to opt
-              // out so the site's colours came through untouched, but once
-              // there is a post pass the frame has two owners of tone mapping
-              // and the display alone comes out 25/255 wrong. Measured, being
-              // mapped costs the site 5/255 — a real screen in a real room is
-              // subject to the room's exposure anyway.
-            />
-          ) : (
-            <meshStandardMaterial
-              color="#12151c"
-              alphaMap={mask}
-              transparent
-              depthWrite={false}
-              roughness={0.3}
-              emissive="#1b2434"
-              emissiveIntensity={0.5}
-            />
-          )}
-        </mesh>
-
-        {/* glass sheen */}
-        <mesh position={[0, H / 2, D / 2 + Z_SHEEN]}>
-          <planeGeometry args={[SCREEN_W, SCREEN_H]} />
-          <meshPhysicalMaterial
-            transparent
-            opacity={material.screenReflectivity}
-            roughness={0.05}
-            metalness={0}
-            clearcoat={1}
-            color="#ffffff"
-          />
-        </mesh>
-
-        {/* dynamic island */}
-        <RoundedBox
-          args={[24, 7.4, 0.5]}
-          radius={safeRadius([24, 7.4, 0.5], 3.6)}
-          smoothness={4}
-          position={[0, H - 14, D / 2 + Z_ISLAND]}
-        >
-          <meshStandardMaterial color="#000000" roughness={0.35} metalness={0.1} />
-        </RoundedBox>
-
-        {/* side buttons */}
-        {[
-          { y: H - 42, h: 9 }, // volume up
-          { y: H - 54, h: 9 }, // volume down
-        ].map((b) => (
-          <mesh key={b.y} position={[-W / 2 - 0.4, b.y, 0]}>
-            <boxGeometry args={[1.2, b.h, 3.4]} />
-            <meshPhysicalMaterial {...body} />
+        <group position={[0, H / 2, 0]}>
+          {/* rail */}
+          <mesh geometry={bodyGeo} castShadow receiveShadow>
+            <meshPhysicalMaterial {...railMat} />
           </mesh>
-        ))}
-        <mesh position={[W / 2 + 0.4, H - 48, 0]}>
-          <boxGeometry args={[1.2, 15, 3.4]} />
-          <meshPhysicalMaterial {...body} />
-        </mesh>
 
-        {/* back glass, proud of the body by its own thickness */}
-        <RoundedBox
-          args={[W - 1.2, H - 1.2, BACK_GLASS_T]}
-          radius={safeRadius([W - 1.2, H - 1.2, BACK_GLASS_T], FRAME_R - 0.6)}
-          smoothness={5}
-          position={[0, H / 2, -D / 2 - Z_BACK_GLASS]}
-        >
-          <meshPhysicalMaterial {...backGlass} />
-        </RoundedBox>
+          {/* the reference's 6px inset bezel, as geometry */}
+          <mesh geometry={bezelGeo} position={[0, 0, D / 2 + Z_BEZEL]}>
+            <meshStandardMaterial color="#000000" roughness={0.35} metalness={0.1} />
+          </mesh>
 
-        {/* logo: a disc a shade darker, catching the light differently */}
-        <mesh position={[0, H / 2, -D / 2 - Z_LOGO]} rotation={[0, Math.PI, 0]}>
-          <circleGeometry args={[8.5, 48]} />
-          <meshPhysicalMaterial
-            color={material.bodyColor}
-            roughness={0.08}
-            metalness={0.95}
-            clearcoat={1}
-          />
-        </mesh>
+          {/* display */}
+          <mesh position={[0, 0, D / 2 + Z_SCREEN]} userData={{ screenSurface: true }}>
+            <planeGeometry args={[SCREEN_W, SCREEN_H]} />
+            {texture ? (
+              <meshBasicMaterial
+                ref={screenMatRef}
+                map={texture}
+                alphaMap={mask}
+                transparent
+                depthWrite={false}
+                color={screenColor}
+              />
+            ) : (
+              <meshStandardMaterial
+                color="#12151c"
+                alphaMap={mask}
+                transparent
+                depthWrite={false}
+                roughness={0.3}
+                emissive="#1b2434"
+                emissiveIntensity={0.5}
+              />
+            )}
+          </mesh>
 
-        {/*
-          Rear camera. Three lenses in the Pro arrangement - two down the left,
-          one at the right middle - with the flash above it and the LiDAR
-          below, which is the detail that stops a phone render reading as a
-          generic slab.
-        */}
-        <group position={[-W / 2 + 19, H - 21, -D / 2 - Z_PLATEAU]}>
-          <RoundedBox args={[34, 34, 1.6]} radius={9} smoothness={5}>
+          {/* reference: 100 x 30 px island, 12px from the top, 20px radius */}
+          <mesh position={[0, H / 2 - (12 / 670) * H - ((30 / 670) * H) / 2, D / 2 + Z_ISLAND]}>
+            <planeGeometry args={[(100 / 320) * W, (30 / 670) * H]} />
+            <meshBasicMaterial color="#000000" />
+          </mesh>
+
+          {/* glass glare */}
+          <mesh position={[0, 0, D / 2 + Z_SHEEN]}>
+            <planeGeometry args={[SCREEN_W, SCREEN_H]} />
             <meshPhysicalMaterial
-              color={material.bodyColor}
-              roughness={0.34}
-              metalness={0.4}
-              clearcoat={0.5}
+              transparent
+              opacity={material.screenReflectivity}
+              roughness={0.05}
+              metalness={0}
+              clearcoat={1}
+              color="#ffffff"
             />
-          </RoundedBox>
-
-          {[
-            [-8, 8],
-            [-8, -8],
-            [8, 0],
-          ].map(([lx, ly]) => (
-            <group key={`${lx}_${ly}`} position={[lx, ly, -1.7]}>
-              {/* ring */}
-              <mesh rotation={[Math.PI / 2, 0, 0]}>
-                <cylinderGeometry args={[5.8, 5.8, 2.0, 32]} />
-                <meshPhysicalMaterial color="#3a3a3f" roughness={0.12} metalness={1} />
-              </mesh>
-              {/* glass, sunk inside the ring so the ring reads as a wall */}
-              <mesh position={[0, 0, -1.1]} rotation={[Math.PI / 2, 0, 0]}>
-                <cylinderGeometry args={[4.6, 4.6, 0.5, 32]} />
-                <meshPhysicalMaterial
-                  color="#04050a"
-                  roughness={0.03}
-                  metalness={0.3}
-                  clearcoat={1}
-                  clearcoatRoughness={0.02}
-                />
-              </mesh>
-            </group>
-          ))}
-
-          {/* flash */}
-          <mesh position={[8, 10.2, -1.2]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[2.7, 2.7, 1.2, 24]} />
-            <meshStandardMaterial color="#ffeedd" emissive="#2a1a08" roughness={0.4} />
           </mesh>
-          {/* LiDAR */}
-          <mesh position={[8, -10.2, -1.2]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[2.7, 2.7, 1.2, 24]} />
-            <meshPhysicalMaterial color="#0a0a0d" roughness={0.16} metalness={0.5} clearcoat={1} />
+
+          {/* frosted back glass */}
+          <mesh geometry={backGlassGeo} position={[0, 0, -D / 2 - Z_BACK_GLASS]}>
+            <meshPhysicalMaterial {...backGlassMat} />
+          </mesh>
+
+          {/* logo — reference: a 0.2 radius glossy disc facing out of the back */}
+          <mesh position={[0, 0, -D / 2 - Z_LOGO]} rotation={[0, Math.PI, 0]}>
+            <circleGeometry args={[0.2 * S, 32]} />
+            <meshPhysicalMaterial color={material.bodyColor} metalness={0.9} roughness={0.1} />
+          </mesh>
+
+          {/* camera bump — reference places it at (0.7, 2.4) on the back */}
+          <group position={[-0.7 * S, 2.4 * S, -D / 2 - Z_BUMP]}>
+            <mesh geometry={bumpGeo}>
+              <meshPhysicalMaterial
+                color={material.bodyColor}
+                metalness={0.2}
+                roughness={0.4}
+                clearcoat={0.5}
+              />
+            </mesh>
+
+            {[
+              [-0.35 * S, 0.35 * S],
+              [-0.35 * S, -0.35 * S],
+              [0.35 * S, 0],
+            ].map(([lx, ly]) => (
+              <group key={`${lx}_${ly}`} position={[lx, ly, LENS_Z]}>
+                <mesh rotation={[Math.PI / 2, 0, 0]}>
+                  <cylinderGeometry args={[LENS_OUTER, LENS_OUTER, 0.045 * S, 32]} />
+                  <meshPhysicalMaterial color="#444444" metalness={1} roughness={0.1} />
+                </mesh>
+                <mesh position={[0, 0, -0.002 * S]} rotation={[Math.PI / 2, 0, 0]}>
+                  <cylinderGeometry args={[LENS_INNER, LENS_INNER, 0.046 * S, 32]} />
+                  <meshPhysicalMaterial
+                    color="#000000"
+                    metalness={0.5}
+                    roughness={0}
+                    clearcoat={1}
+                    clearcoatRoughness={0.02}
+                  />
+                </mesh>
+              </group>
+            ))}
+
+            {/* flash */}
+            <mesh position={[0.35 * S, 0.5 * S, LENS_Z]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.12 * S, 0.12 * S, 0.04 * S, 32]} />
+              <meshPhysicalMaterial color="#ffeedd" emissive="#221100" />
+            </mesh>
+            {/* LiDAR */}
+            <mesh position={[0.35 * S, -0.5 * S, LENS_Z]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.12 * S, 0.12 * S, 0.04 * S, 32]} />
+              <meshPhysicalMaterial color="#050505" metalness={0.5} roughness={0.2} clearcoat={1} />
+            </mesh>
+          </group>
+
+          {/* buttons — reference: 0.04 x 0.5 volume pair, 0.04 x 0.7 power */}
+          {[1.2 * S, 0.5 * S].map((by) => (
+            <mesh key={by} position={[-W / 2 - 0.03 * S, by, 0]}>
+              <boxGeometry args={[0.04 * S, 0.5 * S, 0.04 * S]} />
+              <meshPhysicalMaterial {...railMat} />
+            </mesh>
+          ))}
+          <mesh position={[W / 2 + 0.03 * S, 0.8 * S, 0]}>
+            <boxGeometry args={[0.04 * S, 0.7 * S, 0.04 * S]} />
+            <meshPhysicalMaterial {...railMat} />
           </mesh>
         </group>
 
-        {/* screen spill. Intensity and distance are world-space and must not be
-            scaled into these millimetre units. */}
+        {/* Screen spill. Intensity and distance are world-space and must not
+            be scaled into these millimetre units. */}
         {screen.glow > 0.001 && (
           <pointLight
             userData={{ screenGlow: true }}
