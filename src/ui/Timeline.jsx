@@ -21,6 +21,10 @@ export default function Timeline() {
   const moveKeyframe = useStudio((s) => s.moveKeyframe)
   const dragRef = useRef(null)
   const recording = useStudio((s) => s.recording)
+  const undo = useStudio((s) => s.undo)
+  const redo = useStudio((s) => s.redo)
+  const canUndo = useStudio((s) => s.past.length > 0)
+  const canRedo = useStudio((s) => s.future.length > 0)
   const startRecording = useStudio((s) => s.startRecording)
   const stopRecording = useStudio((s) => s.stopRecording)
   const [recSeconds, setRecSeconds] = useState(0)
@@ -107,6 +111,14 @@ export default function Timeline() {
         </button>
         <button className="btn ghost" onClick={() => { clearKeyframes(); setSelected(null) }}>
           Clear
+        </button>
+        {/* Undo was bound to a keystroke and nothing else, so nobody knew the
+            editor had it. Recording over a take is exactly when you want it. */}
+        <button className="btn ghost" disabled={!canUndo} onClick={undo} title="Undo (Ctrl+Z)">
+          ↶
+        </button>
+        <button className="btn ghost" disabled={!canRedo} onClick={redo} title="Redo (Ctrl+Shift+Z)">
+          ↷
         </button>
 
         <span className="spacer" />
@@ -205,12 +217,13 @@ export default function Timeline() {
 
       <p className="hint">
         {recording ? (
-          'Recording — orbit the camera, open the lid, drag any control. It is all captured.'
+          `Recording from ${(recording.from ?? 0).toFixed(1)}s — orbit the camera, open the lid, drag any control. It is all captured.`
         ) : recResult ? (
           `${recResult} — press Play to watch it back.`
         ) : (
           <>
-            Hit <span className="kbd">● Record</span> and perform the shot, or pose the scene and press{' '}
+            Hit <span className="kbd">● Record</span> and perform the shot — it starts at the
+            playhead and keeps everything before it — or pose the scene and press{' '}
             <span className="kbd">+ Keyframe</span> to place one by hand. Drag a marker to retime it;
             click it to open its time, restamp or delete.
           </>

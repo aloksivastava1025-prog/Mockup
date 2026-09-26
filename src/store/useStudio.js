@@ -7,6 +7,8 @@ import { blankSlot, defaultFloorSlots } from '../scene/floorSlots.js'
 // Re-exported so existing callers keep one import; the list itself lives in
 // anim/groups.js, away from anything that pulls in React.
 export { ANIMATED_GROUPS } from '../anim/groups.js'
+import { sampleAt } from '../anim/interpolate.js'
+import { ANIMATED_GROUPS as ANIMATED } from '../anim/groups.js'
 
 const defaults = {
   device: {
@@ -189,6 +191,7 @@ export const DOC_KEYS = [
 ]
 
 const snapshot = (s) => Object.fromEntries(DOC_KEYS.map((k) => [k, clone(s[k])]))
+const getAnimated = (s) => Object.fromEntries(ANIMATED.map((k) => [k, clone(s[k])]))
 
 // Dragging a slider fires continuously; without coalescing, one drag would cost
 // hundreds of undo steps. Edits to the same field inside this window collapse
@@ -660,15 +663,34 @@ export const useStudio = create((set, get) => ({
   // `samples` is mutated in place by the render loop rather than going through
   // setState, which would re-render the whole editor 30 times a second.
   recording: null, // { startedAt, samples: [] }
+  /**
+   * Record from the playhead, keeping whatever is already before it.
+   *
+   * It used to wipe the track and start at zero, so a take could only ever
+   * be the whole film - there was no way to build the first ten seconds by
+   * hand and then perform the rest.
+   *
+   * The scene is seeded from the track at that moment first. The store holds
+   * the last pose set by hand while the viewport shows the interpolated one,
+   * and without this the recording would open on the hand-set pose and jump.
+   */
   startRecording: () =>
-    set((s) => ({
-      ...historyPatch(s, null),
-      recording: { startedAt: performance.now(), samples: [] },
-      keyframes: [],
-      playhead: 0,
-      isPlaying: false,
-      previewLive: true,
-    })),
+    set((s) => {
+      const from = s.keyframes.length >= 2 ? s.playhead : 0
+      const seeded =
+        s.keyframes.length >= 2
+          ? clone(sampleAt(s.keyframes, from, getAnimated(s)))
+          : {}
+      return {
+        ...historyPatch(s, null),
+        ...seeded,
+        recording: { startedAt: performance.now(), samples: [], from },
+        keyframes: from > 0 ? s.keyframes : [],
+        playhead: from,
+        isPlaying: false,
+        previewLive: true,
+      }
+    }),
   stopRecording: () => {
     const rec = get().recording
     if (!rec) return 0
@@ -678,15 +700,23 @@ export const useStudio = create((set, get) => ({
       set({ recording: null })
       return 0
     }
-    const keyframes = samplesToKeyframes(samples)
+    const from = rec.from ?? 0
+    const taken = samplesToKeyframes(samples).map((k) => ({
+      ...k,
+      time: +(k.time + from).toFixed(3),
+    }))
+    // Anything the take covers is replaced; anything before it is left alone.
+    const kept = get().keyframes.filter((k) => k.time < from - 1e-3)
+    const keyframes = [...kept, ...taken].sort((a, b) => a.time - b.time)
+    const end = from + length
     set({
       recording: null,
       keyframes,
-      duration: Math.max(0.5, +length.toFixed(2)),
-      playhead: 0,
+      duration: Math.max(0.5, get().duration, +end.toFixed(2)),
+      playhead: from,
       previewLive: false,
     })
-    return keyframes.length
+    return taken.length
   },
 
   // ---- export ----

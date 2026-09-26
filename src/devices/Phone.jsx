@@ -20,15 +20,13 @@ const S = 21.9 // reference unit -> mm
 const W = 3.2 * S // 70.1
 const H = 6.7 * S // 146.7
 /**
- * The one number not taken literally.
+ * The reference's own depth: 0.12 units, which is 2.6mm.
  *
- * The reference is 0.12 units deep, which is 2.6mm - about a third of a real
- * phone. On its own white page that reads as stylised; in this app every
- * device stands at true physical scale next to the others, and a 2.6mm phone
- * beside a 16-inch laptop looks like a sheet of paper. 8.25mm is the real
- * iPhone 15 Pro. Put `0.12 * S` back for the reference's own proportion.
+ * That is about a third of a real phone, and the first port used 8.25mm so
+ * it would not look like paper standing beside a 16-inch laptop. Overruled -
+ * the brief was to take the reference exactly, so this is its number.
  */
-const D = 8.25
+const D = 0.12 * S // 2.63
 const RADIUS = 0.42 * S // 9.2
 const BEVEL = 0.025 * S // 0.55
 
@@ -50,13 +48,16 @@ const SCREEN_H = H - BEZEL * 2
  * The first pass put the bezel slab's front face 0.05mm behind the display,
  * which is 5e-8 of a world unit - far under what the depth buffer can tell
  * apart - so the black bezel won the z-fight and covered the screen
- * completely. Half a millimetre is the working figure here, the same margin
- * the back stack already uses and roughly what the lid needed.
+ * completely. Half a millimetre is the working figure here.
+ *
+ * On a 2.6mm body that margin is most of the depth, so the bezel is sunk
+ * slightly into the rail rather than sitting on it, and the display lands
+ * 0.6mm proud - which is the reference's own 0.026 units.
  */
-const Z_BEZEL = 0.15
-const Z_SCREEN = 0.9
-const Z_ISLAND = 1.3
-const Z_SHEEN = 1.6
+const Z_BEZEL = -0.05
+const Z_SCREEN = 0.6
+const Z_ISLAND = 0.9
+const Z_SHEEN = 1.1
 
 const Z_BACK_GLASS = 0.26
 const Z_LOGO = 0.75
@@ -115,7 +116,7 @@ export default function Phone({ rootRef, texture, screenMatRef, material, screen
     () => roundedSlab(W - 0.015 * S, H - 0.015 * S, 0.02 * S, RADIUS - 0.01 * S, 0.2),
     [],
   )
-  const bezelGeo = useMemo(() => roundedSlab(W - 0.3, H - 0.3, 0.25, RADIUS - 0.15, 0.05), [])
+  const bezelGeo = useMemo(() => roundedSlab(W - 0.3, H - 0.3, 0.2, RADIUS - 0.15, 0.03), [])
   // reference: bump is 1.5 x 1.6 with a 0.4 corner
   const bumpGeo = useMemo(() => roundedSlab(1.5 * S, 1.6 * S, 0.03 * S, 0.4 * S, 0.2), [])
 
