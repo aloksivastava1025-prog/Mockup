@@ -202,6 +202,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .vec-rows { display: grid; gap: 2px; }
 
 .control { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* A field is a two-column grid: label, then control. With no label the
+   control would otherwise sit in the label column and shrink to it, which is
+   how a bare select ended up 62px wide and clipping the names it exists to
+   show in full. */
+.field.nolabel { grid-template-columns: minmax(0, 1fr); }
 
 /* ---------- inputs ---------- */
 /* Borderless until hover/focus, exactly like the reference panel. */
@@ -382,6 +387,18 @@ select:focus {
   margin: 0 4px 4px;
   border-left: 2px solid var(--line-strong);
   background: rgba(0, 0, 0, 0.02);
+}
+
+/* Heading for the move already on the timeline, spanning the full row so
+   the phrase is not squeezed into the label column. */
+.fx-placed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* ---------- effects stack ---------- */

@@ -143,7 +143,7 @@ export function Segmented({ label, value, options, onChange }) {
  */
 export function Select({ label, value, options, onChange }) {
   return (
-    <div className="field">
+    <div className={`field ${label ? '' : 'nolabel'}`}>
       {label && <label>{label}</label>}
       <div className="control">
         <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>

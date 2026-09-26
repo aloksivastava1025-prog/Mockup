@@ -2,7 +2,7 @@ import React from 'react'
 import { useStudio } from '../store/useStudio.js'
 import { DEVICE_LIST, COMING_SOON, DEVICES } from '../devices/index.js'
 import { adaptFor } from '../devices/adapt.js'
-import { Panel, Segmented, Slider, Toggle, Vec3 } from './controls.jsx'
+import { Panel, Segmented, Select, Slider, Toggle, Vec3 } from './controls.jsx'
 import FocusPanel from './FocusPanel.jsx'
 import CameraMoves from './CameraMoves.jsx'
 import TitlesPanel from './TitlesPanel.jsx'
@@ -78,15 +78,16 @@ export default function LeftPanel({ onCollapse }) {
         </button>
       </div>
       <Panel title="Device">
-        <div className="field stacked">
-          <div className="seg">
-            {DEVICE_LIST.map((d) => (
-              <button key={d.id} className={deviceId === d.id ? 'on' : ''} onClick={() => pickDevice(d.id)}>
-                {d.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/*
+          A select, not segments. Segments divide the row evenly, so at five
+          devices every label was down to "Ma...", "Tabl...", "Dis..." and the
+          control stopped saying which device was which.
+        */}
+        <Select
+          value={deviceId}
+          options={DEVICE_LIST.map((d) => ({ value: d.id, label: d.label }))}
+          onChange={pickDevice}
+        />
         {COMING_SOON.length > 0 && (
           <p className="hint">Coming soon: {COMING_SOON.map((d) => d.label).join(', ')}.</p>
         )}
@@ -129,19 +130,11 @@ export default function LeftPanel({ onCollapse }) {
                   remove
                 </button>
               </div>
-              <div className="field stacked">
-                <div className="seg">
-                  {DEVICE_LIST.map((d) => (
-                    <button
-                      key={d.id}
-                      className={c.deviceId === d.id ? 'on' : ''}
-                      onClick={() => updateCompanion(c.id, { deviceId: d.id })}
-                    >
-                      {d.label.split(' ')[0]}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <Select
+                value={c.deviceId}
+                options={DEVICE_LIST.map((d) => ({ value: d.id, label: d.label }))}
+                onChange={(v) => updateCompanion(c.id, { deviceId: v })}
+              />
               <Slider
                 label="Across"
                 value={c.position[0]}

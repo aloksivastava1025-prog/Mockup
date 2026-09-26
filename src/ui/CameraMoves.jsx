@@ -131,8 +131,10 @@ export default function CameraMoves() {
 
       {live && (
         <div className="subgroup">
-          <div className="field">
-            <label>On the timeline</label>
+          {/* Not a field label: that column is sized for one short word and
+              clipped this to "On the ti...". It is a section heading. */}
+          <div className="fx-placed">
+            <span>On the timeline</span>
             <span className="badge">{MOVES[lastMove.id].label}</span>
           </div>
           <Slider
