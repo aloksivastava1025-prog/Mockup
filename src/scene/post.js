@@ -72,6 +72,17 @@ const FRAG = /* glsl */ `
       uv = d + 0.5;
     }
 
+    /**
+     * Alpha is carried through, not assumed.
+     *
+     * This pass used to end on vec4(col, 1.0), which made every cutout
+     * export opaque the moment any effect was switched on: the device came
+     * out correctly and the transparent background came back solid black.
+     * The colour work below is all on rgb; the coverage the renderer
+     * produced is passed along untouched.
+     */
+    float alpha = texture2D(tDiffuse, uv).a;
+
     vec3 col;
     if (uChroma > 0.0001) {
       vec2 off = (uv - 0.5) * uChroma * 0.02;
@@ -132,7 +143,12 @@ const FRAG = /* glsl */ `
       col += n * uGrain * 0.18;
     }
 
-    gl_FragColor = vec4(col, 1.0);
+    /*
+     * Bloom adds light to rgb but never to alpha, so on a cutout the spill
+     * off a bright screen does not paint glow onto empty space. A cutout is
+     * the device; what it would have lit is the compositor's business.
+     */
+    gl_FragColor = vec4(col, alpha);
   }
 `
 
@@ -204,7 +220,15 @@ export function makePostPass() {
     // an object the material had never heard of, and the effects silently did
     // nothing. Passing a material keeps the reference.
     effectPass = new ShaderPass(
-      new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG }),
+      // No blending: this writes a finished frame into an empty target, and
+      // the default normal blend would composite its alpha against the
+      // target's instead of replacing it.
+      new THREE.ShaderMaterial({
+        uniforms,
+        vertexShader: VERT,
+        fragmentShader: FRAG,
+        blending: THREE.NoBlending,
+      }),
     )
     composer.addPass(effectPass)
     composer.addPass(new OutputPass())
