@@ -50,9 +50,6 @@ export default function CameraMoves() {
 
   return (
     <>
-      <p className="hint">
-        Moves start from the framing you have now and are written onto the timeline at the playhead.
-      </p>
       <div className="fx-menu" style={{ position: 'static', boxShadow: 'none' }}>
         {MOVE_GROUPS.map((g) => {
           const items = Object.entries(MOVES).filter(([, m]) => m.group === g.id)
@@ -94,6 +91,19 @@ export default function CameraMoves() {
                       ]}
                       onChange={(v) => setDir(Number(v))}
                     />
+                    {/*
+                      Said here, in the numbers of the moment, rather than as
+                      a general note above the menu. Someone looking at this
+                      list wants to know what happens when they click one, and
+                      "moves are written onto the timeline at the playhead" is
+                      not that.
+                    */}
+                    <p className="hint">
+                      Pick one below → writes keyframes from{' '}
+                      <strong>{playhead.toFixed(1)}s</strong> to{' '}
+                      <strong>{(playhead + seconds).toFixed(1)}s</strong>, starting from the
+                      framing on screen now.
+                    </p>
                   </div>
                   {items.map(([id, m]) => (
                     <button key={id} className="fx-item" onClick={() => add(id)}>
